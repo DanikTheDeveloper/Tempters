@@ -1,0 +1,10 @@
+# EXAMPLE ONLY. Do not blindly overwrite ~/.codex/config.toml or credentials.
+# Select a model available to YOUR installed Codex/account in /model.
+# If 'gpt-6-astra' appears as a supported model ID, set it here, otherwise leave model unset.
+# model = "gpt-6-astra"
+model_reasoning_effort = "medium"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+# Higher reasoning may benefit complex rendering/architecture bugfixes, but consumes budget.
+# Do not edit system-wide permissions to make a game build work.

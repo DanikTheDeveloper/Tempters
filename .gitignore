@@ -1,0 +1,19 @@
+# Godot local import caches
+.godot/
+.import/
+.export/
+
+# Generated binaries / large intermediate art files
+build/
+dist/
+*.log
+*.blend1
+*.blend2
+
+# Personal editor/system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Keep source art, assets, scripts and documentation tracked.

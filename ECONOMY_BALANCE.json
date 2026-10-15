@@ -1,0 +1,361 @@
+{
+  "schema_version": 2,
+  "note": "Prototype values; iterate after manual playtesting. Time in seconds, weight arbitrary inventory units, distances world meters except where named logical cells.",
+  "world": {
+    "seed": 283451,
+    "initial_region": "forest",
+    "logical_cells_per_side_w1": 64,
+    "world_units_per_cell": 2.0,
+    "spawn_guarantees": {
+      "trees_within_15_cells": 10,
+      "prey_within_20_cells": 5,
+      "ore_nodes_within_30_cells": 3,
+      "safe_walkable_radius_around_shrine_cells": 5
+    },
+    "stream_chunk_cells_later": 32,
+    "active_chunk_radius_later": 1
+  },
+  "player": {
+    "max_health": 100,
+    "move_speed_world_units_per_second": 5.0,
+    "interaction_range_world_units": 2.25,
+    "default_inventory_slots": 12,
+    "base_weight_capacity": 30.0,
+    "initial_health": 75
+  },
+  "items": {
+    "wood": {
+      "weight": 2.0,
+      "max_stack": 20
+    },
+    "raw_meat": {
+      "weight": 1.0,
+      "max_stack": 20
+    },
+    "cooked_meat": {
+      "weight": 1.0,
+      "max_stack": 20
+    },
+    "hide": {
+      "weight": 1.0,
+      "max_stack": 20
+    },
+    "stone": {
+      "weight": 2.0,
+      "max_stack": 20
+    },
+    "ore": {
+      "weight": 3.0,
+      "max_stack": 20
+    },
+    "ingot": {
+      "weight": 2.0,
+      "max_stack": 20
+    },
+    "herb": {
+      "weight": 0.5,
+      "max_stack": 30
+    }
+  },
+  "drops": {
+    "hare": {
+      "raw_meat": 1,
+      "hide": 1
+    },
+    "boar": {
+      "raw_meat": 3,
+      "hide": 2
+    },
+    "deer": {
+      "raw_meat": 2,
+      "hide": 2
+    },
+    "pine": {
+      "wood_min": 2,
+      "wood_max": 4
+    },
+    "stone_rock": {
+      "stone_min": 2,
+      "stone_max": 3
+    },
+    "ore_rock": {
+      "ore_min": 2,
+      "ore_max": 3
+    }
+  },
+  "temptress": {
+    "initial_satisfaction": 65.0,
+    "initial_level": 1,
+    "max_satisfaction_per_level": [
+      100,
+      130,
+      160,
+      200,
+      250
+    ],
+    "passive_drain_per_second": 0.025,
+    "feed_raw_meat_gain": 4.0,
+    "feed_cooked_meat_gain": 7.0,
+    "at_zero": "dormant: paid services disabled; feeding and basic recovery always possible",
+    "higher_tier_appetite_multiplier": [
+      1.0,
+      1.15,
+      1.3,
+      1.5,
+      1.75
+    ]
+  },
+  "recipes": {
+    "ingot_from_ore": {
+      "inputs": {
+        "ore": 2
+      },
+      "output": {
+        "ingot": 1
+      },
+      "satisfaction": 10,
+      "name": "Smelt ingot",
+      "required_level": 1,
+      "description": "2 ore \u2192 1 ingot."
+    },
+    "primitive_axe": {
+      "inputs": {
+        "wood": 3,
+        "stone": 2
+      },
+      "output": {
+        "axe": 1
+      },
+      "satisfaction": 12,
+      "name": "Stone axe",
+      "required_level": 1,
+      "description": "Chop trees in 0.55s instead of 0.9s."
+    },
+    "spear": {
+      "inputs": {
+        "wood": 2,
+        "ingot": 1
+      },
+      "output": {
+        "spear": 1
+      },
+      "satisfaction": 12,
+      "name": "Spear",
+      "required_level": 2,
+      "description": "Hunt in 0.45s. Hunting reach +0.65."
+    },
+    "reinforced_backpack": {
+      "inputs": {
+        "hide": 6,
+        "wood": 4
+      },
+      "output": {
+        "backpack_upgrade": 1
+      },
+      "satisfaction": 18,
+      "weight_bonus": 10,
+      "slot_bonus": 4,
+      "name": "Reinforced backpack",
+      "required_level": 1,
+      "description": "Capacity +10 weight and +4 slots."
+    },
+    "palisade": {
+      "inputs": {
+        "wood": 4
+      },
+      "output": {
+        "palisade": 1
+      },
+      "satisfaction": 0
+    },
+    "totem": {
+      "inputs": {
+        "wood": 8,
+        "hide": 2
+      },
+      "output": {
+        "totem": 1
+      },
+      "satisfaction": 0
+    },
+    "stone_golem": {
+      "inputs": {
+        "stone": 8,
+        "ingot": 2
+      },
+      "output": {
+        "stone_golem": 1
+      },
+      "satisfaction": 16
+    },
+    "hide_armor": {
+      "name": "Hide armor",
+      "required_level": 2,
+      "inputs": {
+        "hide": 4,
+        "wood": 2
+      },
+      "output": {
+        "hide_armor": 1
+      },
+      "satisfaction": 14,
+      "description": "Maximum Health +20. Does not restore Health."
+    },
+    "iron_pickaxe": {
+      "name": "Iron pickaxe",
+      "required_level": 3,
+      "inputs": {
+        "wood": 3,
+        "ingot": 2
+      },
+      "output": {
+        "iron_pickaxe": 1
+      },
+      "satisfaction": 16,
+      "description": "Mine stone and ore in 0.5s instead of 0.9s."
+    },
+    "tempered_axe": {
+      "name": "Iron axe",
+      "required_level": 4,
+      "requires_equipment": "axe",
+      "inputs": {
+        "wood": 3,
+        "ingot": 3
+      },
+      "output": {
+        "tempered_axe": 1
+      },
+      "satisfaction": 20,
+      "description": "Chop trees in 0.35s. Replaces the stone axe effect."
+    },
+    "reinforced_armor": {
+      "name": "Reinforced armor",
+      "required_level": 5,
+      "requires_equipment": "hide_armor",
+      "inputs": {
+        "hide": 4,
+        "ingot": 3
+      },
+      "output": {
+        "reinforced_armor": 1
+      },
+      "satisfaction": 24,
+      "description": "Maximum Health +20 more. Does not restore Health."
+    }
+  },
+  "services": {
+    "heal_amount": 25,
+    "heal_cost_satisfaction": 10,
+    "fast_travel_source_satisfaction_cost": 20,
+    "fast_travel_destination_satisfaction_cost": 10,
+    "higher_level_upkeep_note": "Leveling costs are specified in W2 as data-driven and are balanced to avoid starving game"
+  },
+  "defense": {
+    "totem_satisfaction_per_second_first": 0.015,
+    "totem_diminishing_returns": "each additional valid totem grants 60% of previous, capped at 5",
+    "first_raid_min_time_seconds": 360,
+    "minimum_repeat_raid_interval_seconds": 240,
+    "first_raid_opponents": 2,
+    "capture_channel_seconds": 10
+  },
+  "expedition_bond": {
+    "initial_max": 100,
+    "core_aura_radius_world_units": 30,
+    "base_drain_per_second_outside_aura": 0.07,
+    "extra_drain_per_second_per_world_unit_beyond_aura": 0.001,
+    "regen_per_second_near_satisfied_core": 2.0,
+    "max_bonus_per_core_level": 30,
+    "empty_warning_seconds": 10,
+    "recall_loss_fraction_of_unbanked_inventory": 0.2
+  },
+  "equipment": {
+    "axe": {
+      "name": "Stone axe",
+      "action_kind": "pine",
+      "action_seconds": 0.55
+    },
+    "spear": {
+      "name": "Spear",
+      "action_kind": "hare",
+      "action_seconds": 0.45,
+      "reach_bonus": 0.65
+    },
+    "backpack_upgrade": {
+      "name": "Reinforced backpack",
+      "weight_bonus": 10,
+      "slot_bonus": 4
+    },
+    "hide_armor": {
+      "name": "Hide armor",
+      "health_bonus": 20
+    },
+    "iron_pickaxe": {
+      "name": "Iron pickaxe",
+      "action_kind": "mineral",
+      "action_seconds": 0.5
+    },
+    "tempered_axe": {
+      "name": "Iron axe",
+      "action_kind": "pine",
+      "action_seconds": 0.35
+    },
+    "reinforced_armor": {
+      "name": "Reinforced armor",
+      "health_bonus": 20
+    }
+  },
+  "progression": {
+    "w2_recipes": [
+      "ingot_from_ore",
+      "primitive_axe",
+      "reinforced_backpack",
+      "spear",
+      "hide_armor",
+      "iron_pickaxe",
+      "tempered_axe",
+      "reinforced_armor"
+    ],
+    "levels": [
+      {
+        "inputs": {
+          "wood": 4,
+          "stone": 3,
+          "hide": 2
+        },
+        "satisfaction": 20
+      },
+      {
+        "inputs": {
+          "ingot": 2,
+          "stone": 4,
+          "hide": 3
+        },
+        "satisfaction": 25
+      },
+      {
+        "inputs": {
+          "ingot": 4,
+          "wood": 6,
+          "hide": 4
+        },
+        "satisfaction": 30
+      },
+      {
+        "inputs": {
+          "ingot": 6,
+          "stone": 6,
+          "hide": 6
+        },
+        "satisfaction": 40
+      }
+    ]
+  },
+  "runtime": {
+    "action_seconds": 0.9,
+    "service_cooldown": 0.9,
+    "ritual_seconds": 1.2,
+    "prey_renew_seconds": 35,
+    "resource_renew_seconds": 65,
+    "autosave_seconds": 30
+  }
+}
