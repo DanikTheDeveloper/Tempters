@@ -29,6 +29,10 @@ func setup(owner_game: Node) -> void:
 	status.size = Vector2(360,70)
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var backdrop := StyleBoxFlat.new()
+	backdrop.bg_color = Color("202e2b",0.92)
+	backdrop.set_content_margin_all(8)
+	status.add_theme_stylebox_override("normal",backdrop)
 	var box: Node = game.hud.menu.get_child(0)
 	reclaim_button = game.hud.button(box,"Reclaim shrine / 10s",func(): reclaiming = true)
 	reclaim_button.hide()
@@ -185,8 +189,8 @@ func start_raid() -> void:
 	capture_progress = 0
 	var count: int = mini(config.max_raiders,int(game.state.balance.defense.first_raid_opponents)+floori((wave-1)/2.0)+floori((game.state.level-1)/2.0))
 	for i in count:
-		var at := Vector3((i-(count-1)*0.5)*1.3,0,-13)
-		add_unit("raider",game.navigation.point(game.navigation.nearest(at)))
+		var at := Vector3((i-(count-1)*0.5)*1.3,0,-40)
+		add_unit("raider",at)
 	game.save_game(false)
 
 func set_occupied(occupied: bool) -> void:

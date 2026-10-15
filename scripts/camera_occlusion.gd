@@ -41,7 +41,7 @@ func restore_piece(piece: Dictionary) -> void:
 	piece.applied = false
 
 func obstructs(mesh: MeshInstance3D, at: Vector3) -> bool:
-	if not mesh.is_visible_in_tree(): return false
+	if not mesh.is_inside_tree() or not mesh.is_visible_in_tree(): return false
 	var point: Vector2 = game.camera.unproject_position(at)
 	var origin: Vector3 = game.camera.project_ray_origin(point)
 	var inverse := mesh.global_transform.affine_inverse()
@@ -80,7 +80,7 @@ func _process(delta: float) -> void:
 	sample_time -= delta
 	if sample_time <= 0:
 		sample_time = 0.08
-		pieces = pieces.filter(func(p): return is_instance_valid(p.mesh))
+		pieces = pieces.filter(func(p): return is_instance_valid(p.mesh) and p.mesh.is_inside_tree())
 		sample()
 	for piece in pieces:
 		piece.hold = maxf(0,piece.hold-delta)

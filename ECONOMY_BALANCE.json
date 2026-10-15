@@ -116,7 +116,7 @@
       "satisfaction": 10,
       "name": "Smelt ingot",
       "required_level": 1,
-      "description": "2 ore → 1 ingot."
+      "description": "2 ore \u2192 1 ingot."
     },
     "primitive_axe": {
       "inputs": {
@@ -341,12 +341,17 @@
   "expedition_bond": {
     "initial_max": 100,
     "core_aura_radius_world_units": 30,
-    "base_drain_per_second_outside_aura": 0.07,
-    "extra_drain_per_second_per_world_unit_beyond_aura": 0.001,
+    "base_drain_per_second_outside_aura": 0.35,
+    "extra_drain_per_second_per_world_unit_beyond_aura": 0.008,
     "regen_per_second_near_satisfied_core": 2.0,
     "max_bonus_per_core_level": 30,
     "empty_warning_seconds": 10,
-    "recall_loss_fraction_of_unbanked_inventory": 0.2
+    "recall_loss_fraction_of_unbanked_inventory": 0.2,
+    "biome_multiplier": {
+      "forest": 1.0,
+      "desert": 1.6,
+      "snow": 1.8
+    }
   },
   "equipment": {
     "axe": {

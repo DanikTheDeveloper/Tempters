@@ -20,6 +20,7 @@ var performance_reported := false
 var low_spec := false
 var base_camera := Vector3(0,24,17)
 var shrine_light: OmniLight3D
+var key_light: DirectionalLight3D
 var last_mood := "IMPATIENT"
 var persistence_enabled := DisplayServer.get_name() != "headless"
 var save_path := "user://save_slot_1.json"
@@ -32,6 +33,9 @@ var buildings: BuildingSystem
 var combat: CombatDirector
 var occlusion: CameraOcclusion
 var interaction: InteractionResolver
+var frontier: WorldStream
+var expedition: Expedition
+var exploration_map: ExplorationMap
 
 func _ready() -> void:
 	low_spec = "--low-spec" in OS.get_cmdline_user_args()
@@ -68,6 +72,16 @@ func _ready() -> void:
 	occlusion.setup(self)
 	interaction = InteractionResolver.new(self)
 	call_deferred("register_occluders")
+	frontier = WorldStream.new()
+	add_child(frontier)
+	frontier.setup(self)
+	navigation.external_route = frontier.route
+	expedition = Expedition.new()
+	add_child(expedition)
+	expedition.setup(self)
+	exploration_map = ExplorationMap.new()
+	hud.add_child(exploration_map)
+	exploration_map.setup(self)
 	if persistence_enabled and FileAccess.file_exists(save_path): load_game()
 	if "--clay-review" in OS.get_cmdline_user_args():
 		for node in shrine.find_children("*","MeshInstance3D",true,false):
@@ -91,6 +105,7 @@ func build_stage() -> void:
 	env.environment = settings
 	add_child(env)
 	var key := DirectionalLight3D.new()
+	key_light = key
 	key.rotation_degrees = Vector3(-52,-35,0)
 	key.light_color = Color("ffe0b4")
 	key.light_energy = 1.1
@@ -169,6 +184,7 @@ func register_occluders() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_M: exploration_map.toggle()
 		if event.keycode == KEY_G: buildings.toggle()
 		if event.keycode == KEY_R and not buildings.placing.is_empty(): buildings.angle = fposmod(buildings.angle+PI/2,TAU)
 		if event.keycode == KEY_F5: save_game()
@@ -180,6 +196,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			hud.hint.text = "3D render scale: 65% / HUD remains full resolution" if low_spec else "3D render scale: 100%"
 		if event.keycode in [KEY_I,KEY_B]: hud.inventory_panel.visible = not hud.inventory_panel.visible
 		if event.keycode == KEY_ESCAPE:
+			if exploration_map.expanded:
+				exploration_map.toggle()
+				return
 			if feed_lock > 0: return
 			if target != null or not hero.path.is_empty() or hud.menu.visible or buildings.panel.visible or is_instance_valid(combat.attack_target) or is_instance_valid(combat.deploying):
 				cancel()
@@ -258,6 +277,10 @@ func _process(delta: float) -> void:
 		save_game(false)
 	repath -= delta
 	state.tick(delta)
+	expedition.tick(delta)
+	var cold := smoothstep(0.3,0.9,-frontier.layout.temperature(hero.position))
+	key_light.light_color = Color("ffe0b4").lerp(Color("d5e3f3"),cold)
+	key_light.light_energy = lerpf(1.1,0.9,cold)
 	buildings.tick(delta)
 	shrine.satisfaction_ratio = state.satisfaction/state.cap()
 	shrine_light.light_energy = 0.12+shrine.satisfaction_ratio*0.8+shrine.pulse*0.5
@@ -267,18 +290,20 @@ func _process(delta: float) -> void:
 		elif state.satisfaction < 30: hud.notice.text = "Satisfaction low. Feed the shrine."
 		else: hud.notice.text = ""
 	var follow := Vector3(clampf(hero.position.x*0.23,-2.4,2.4),0,clampf((hero.position.z-5)*0.2,-1.5,1.8))
-	camera.position = camera.position.lerp(base_camera+follow,delta*2)
+	var distance := maxf(absf(hero.position.x),absf(hero.position.z))
+	follow = follow.lerp(hero.position,smoothstep(15,23,distance))
+	camera.position = camera.position.lerp(base_camera+follow,minf(1,delta*3))
 	if hover != null: hover.marker.visible = false
 	var hit := pick()
 	hover = hit.get("collider") as Interactable
 	if hover != null and not hover.depleted: hover.marker.visible = true
-	for animal in targets:
+	for animal in targets+frontier.resources:
 		if animal.kind != "hare" or animal.depleted: continue
 		animal.fleeing = animal.position.distance_to(hero.position) < 2.8 and not hero.working
 		if animal.fleeing:
 			var away := (animal.position-hero.position).normalized()
 			var candidate := animal.position+away*delta*1.0
-			if candidate.distance_to(animal.home) < 2 and not navigation.grid.is_point_solid(navigation.cell(candidate)):
+			if candidate.distance_to(animal.home) < 2 and ((animal.home.length()>20) or not navigation.grid.is_point_solid(navigation.cell(candidate))):
 				animal.position = candidate
 				animal.art.rotation.y = atan2(away.x,away.z)
 	if target != null:
@@ -441,6 +466,9 @@ func load_game(use_previous := false) -> void:
 			if node.persistent_id == entry.id: node.restore_entry(entry)
 	buildings.restore(result.data.buildings)
 	combat.restore(result.data.combat)
+	frontier.restore(result.data.exploration)
+	expedition.restore(result.data.expedition)
+	if exploration_map.expanded: exploration_map.toggle()
 	occlusion.reset()
 	# Navigation requests and modal/animation locks never survive a successful load.
 	paused = false

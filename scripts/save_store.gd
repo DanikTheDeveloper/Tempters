@@ -5,26 +5,34 @@ static func snapshot(game: Node) -> Dictionary:
 	var world := []
 	for node in game.targets:
 		world.append({"id":node.persistent_id,"position":[node.position.x,0,node.position.z],"depleted":node.depleted,"remaining":maxf(0,node.remaining) if node.depleted else 0.0})
-	return {"version":3,"seed":game.state.balance.world.seed,"owned_shrines":[] if game.combat.phase == "occupied" else [game.shrine.persistent_id],"character":game.state.serialize(),"position":[game.hero.position.x,0,game.hero.position.z],"world":world,"buildings":game.buildings.serialize(),"combat":game.combat.serialize()}
+	return {"version":4,"exploration":game.frontier.serialize(),"expedition":game.expedition.serialize(),"seed":game.state.balance.world.seed,"owned_shrines":[] if game.combat.phase == "occupied" else [game.shrine.persistent_id],"character":game.state.serialize(),"position":[game.hero.position.x,0,game.hero.position.z],"world":world,"buildings":game.buildings.serialize(),"combat":game.combat.serialize()}
 
 static func valid_position(p: Variant) -> bool:
 	if not p is Array or p.size() != 3: return false
 	for n in p:
 		if not (n is float or n is int) or not is_finite(float(n)): return false
-	return p[1] == 0 and absf(p[0]) <= 16.3 and absf(p[2]) <= 16.3
+	return p[1] == 0 and absf(p[0]) <= WorldLayout.LIMIT and absf(p[2]) <= WorldLayout.LIMIT
 
 static func validate(data: Variant, game: Node) -> String:
 	if not data is Dictionary: return "Invalid save file."
-	if not GameState.whole_number(data.get("version")) or data.version < 1 or data.version > 3: return "Unsupported save version."
+	if not GameState.whole_number(data.get("version")) or data.version < 1 or data.version > 4: return "Unsupported save version."
 	if data.get("seed") != game.state.balance.world.seed: return "World seed mismatch."
-	var occupied: bool = data.version == 3 and data.get("combat") is Dictionary and data.combat.get("phase") == "occupied"
+	var occupied: bool = data.version >= 3 and data.get("combat") is Dictionary and data.combat.get("phase") == "occupied"
 	if data.get("owned_shrines") != ([] if occupied else [game.shrine.persistent_id]): return "Invalid shrine ownership."
 	var error: String = game.state.validate_data(data.get("character"))
 	if not error.is_empty(): return error
 	if not valid_position(data.get("position")): return "Invalid player position."
 	var p := Vector3(data.position[0],0,data.position[2])
+	if data.version<4 and maxf(absf(p.x),absf(p.z))>16.3: return "Invalid player position."
 	for node in game.targets:
 		if node.kind != "hare" and p.distance_to(node.home) < node.radius+0.23: return "Player position is obstructed."
+	if data.version == 4 and maxf(absf(p.x),absf(p.z))>20:
+		var cell := WorldLayout.chunk(p)
+		if cell != Vector2i.ZERO:
+			for side in [-1,1]:
+				if p.distance_to(game.frontier.layout.landmark(cell)+Vector3(side*1.6,0,0))<0.83: return "Player position is obstructed."
+		for entry in game.frontier.layout.descriptors(cell):
+			if entry.kind != "hare" and p.distance_to(entry.position)<(0.65 if entry.kind=="pine" else 0.85)+0.23: return "Player position is obstructed."
 	if not data.get("world") is Array or data.world.size() != game.targets.size(): return "Incomplete world data."
 	var seen := {}
 	for entry in data.world:
@@ -44,7 +52,13 @@ static func validate(data: Variant, game: Node) -> String:
 	if data.version >= 2:
 		error = game.buildings.validate_data(data.get("buildings"),p)
 		if not error.is_empty(): return error
-	if data.version == 3: return game.combat.validate_data(data.get("combat"),data.buildings)
+	if data.version >= 3:
+		error = game.combat.validate_data(data.get("combat"),data.buildings)
+		if not error.is_empty(): return error
+	if data.version == 4:
+		error = game.frontier.validate(data.get("exploration"))
+		if not error.is_empty(): return error
+		return game.expedition.validate(data.get("expedition"),int(data.character.level))
 	return ""
 
 static func write(path: String, game: Node) -> String:
@@ -98,4 +112,9 @@ static func read(path: String, game: Node) -> Dictionary:
 	if error.is_empty() and data.version == 2:
 		data.version = 3
 		data.combat = game.combat.fresh_data()
+	if error.is_empty() and data.version == 3:
+		data.version = 4
+		data.exploration = {"generator":1,"changes":{},"explored":[],"landmarks":[]}
+		var cfg: Dictionary = game.state.balance.expedition_bond
+		data.expedition = {"bond":cfg.initial_max+(data.character.level-1)*cfg.max_bonus_per_core_level,"grace":cfg.empty_warning_seconds}
 	return {"error":error,"data":data,"repaired":repaired}

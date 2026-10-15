@@ -4,10 +4,11 @@ extends RefCounted
 const STEP := 0.65
 const HALF := 25
 var grid := AStarGrid2D.new()
+var external_route := Callable()
 var obstacles: Array[Vector3] = []
 
-func _init() -> void:
-	grid.region = Rect2i(-HALF, -HALF, HALF * 2 + 1, HALF * 2 + 1)
+func _init(region := Rect2i(-HALF,-HALF,HALF*2+1,HALF*2+1)) -> void:
+	grid.region = region
 	grid.cell_size = Vector2.ONE * STEP
 	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
 	grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
@@ -16,13 +17,13 @@ func _init() -> void:
 
 func block(pos: Vector3, radius: float) -> void:
 	obstacles.append(Vector3(pos.x, radius, pos.z))
-	for x in range(-HALF, HALF + 1):
-		for y in range(-HALF, HALF + 1):
+	for x in range(maxi(grid.region.position.x,floori((pos.x-radius-0.48)/STEP)),mini(grid.region.end.x,ceili((pos.x+radius+0.48)/STEP)+1)):
+		for y in range(maxi(grid.region.position.y,floori((pos.z-radius-0.48)/STEP)),mini(grid.region.end.y,ceili((pos.z+radius+0.48)/STEP)+1)):
 			if Vector2(x * STEP, y * STEP).distance_to(Vector2(pos.x, pos.z)) < radius + 0.48:
 				grid.set_point_solid(Vector2i(x,y))
 
 func cell(pos: Vector3) -> Vector2i:
-	return Vector2i(clampi(roundi(pos.x / STEP), -HALF, HALF), clampi(roundi(pos.z / STEP), -HALF, HALF))
+	return Vector2i(clampi(roundi(pos.x / STEP),grid.region.position.x,grid.region.end.x-1), clampi(roundi(pos.z / STEP),grid.region.position.y,grid.region.end.y-1))
 
 func point(id: Vector2i) -> Vector3:
 	return Vector3(id.x * STEP, 0, id.y * STEP)
@@ -42,6 +43,7 @@ func nearest(pos: Vector3) -> Vector2i:
 	return best
 
 func route(from: Vector3, to: Vector3, reach := 0.0) -> PackedVector3Array:
+	if external_route.is_valid() and (maxf(absf(from.x),absf(from.z))>16 or maxf(absf(to.x),absf(to.z))>16): return external_route.call(from,to,reach)
 	var start := nearest(from)
 	var finish := nearest(to)
 	if reach > 0:

@@ -24,3 +24,6 @@ godot --headless --path . --script tests/test_combat.gd
 godot --headless --path . --script tests/test_endurance.gd
 godot --headless --path . --script tests/test_save_restart.gd -- --write
 godot --headless --path . --script tests/test_save_restart.gd
+godot --headless --path . --script tests/test_world.gd
+godot --headless --path . --script tests/test_world_restart.gd -- --write
+godot --headless --path . --script tests/test_world_restart.gd

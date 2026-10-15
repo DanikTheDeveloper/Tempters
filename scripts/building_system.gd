@@ -121,6 +121,9 @@ func navigation_for(entries: Array) -> GridNavigation:
 
 func rebuild_navigation() -> void:
 	game.navigation = navigation_for(serialize().structures)
+	if is_instance_valid(game.frontier):
+		game.navigation.external_route = game.frontier.route
+		game.frontier.nav_dirty = true
 	game.hero.path.clear()
 	game.target = null
 	game.hero.working = false
@@ -358,6 +361,6 @@ func validate_data(data: Variant, player: Vector3) -> String:
 	if totems > config.max_totems: return "Totem limit exceeded."
 	var nav := navigation_for(data.structures)
 	for node in game.targets:
-		var route := nav.route(player,node.home,game.reach(node))
+		var route := nav.route(player if maxf(absf(player.x),absf(player.z))<=16 else Vector3(0,0,5),node.home,game.reach(node))
 		if route.is_empty() or route[-1].distance_to(node.home) > game.reach(node)+0.1: return "Structures block resource access."
 	return ""

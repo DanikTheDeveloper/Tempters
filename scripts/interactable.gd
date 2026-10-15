@@ -1,6 +1,9 @@
 class_name Interactable
 extends StaticBody3D
+static var rings: Dictionary = {}
+static var shared_stump: Mesh
 
+var drop_override: Dictionary = {}
 var kind := "pine"
 var persistent_id := ""
 var title := ""
@@ -17,7 +20,7 @@ var drop_label: Label3D
 var stump: Node3D
 var satisfaction_ratio := 0.65
 
-func setup(type: String, at: Vector3, variant: int) -> void:
+func setup(type: String, at: Vector3, variant: int, visual: Node3D = null) -> void:
 	kind = type
 	persistent_id = "%s_%d" % [type,variant]
 	position = at
@@ -33,17 +36,23 @@ func setup(type: String, at: Vector3, variant: int) -> void:
 		"pine":
 			title = "Pine / Chop wood"
 			radius = 0.65
-			art = Woodland.pine(self,variant)
-			stump = Sculpt.rock(self,Vector3(0,0.23,0),Vector3(0.4,0.3,0.36),Sculpt.mat("776044"),variant)
+			art = visual if visual != null else Woodland.pine(self,variant)
+			if visual != null and shared_stump != null:
+				stump = Sculpt.mesh(self,shared_stump,Sculpt.mat("776044"),Vector3(0,0.23,0))
+				stump.scale = Vector3(0.4,0.3,0.36)
+			else:
+				stump = Sculpt.rock(self,Vector3(0,0.23,0),Vector3(0.4,0.3,0.36),Sculpt.mat("776044"),variant)
+				shared_stump = stump.mesh
 			stump.visible = false
 		"hare":
 			title = "Hare / Hunt for meat and hide"
 			radius = 0.42
-			art = Creatures.hare(self)
+			art = visual if visual != null else Creatures.hare(self)
 		_:
 			title = "Ore / Mine" if kind == "ore" else "Stone / Quarry"
 			radius = 0.85
-			art = Woodland.ore(self,variant,kind == "ore")
+			art = visual if visual != null else Woodland.ore(self,variant,kind == "ore")
+	if visual != null: add_child(art)
 	var shape := CollisionShape3D.new()
 	var cylinder := CylinderShape3D.new()
 	cylinder.radius = radius
@@ -63,7 +72,10 @@ func setup(type: String, at: Vector3, variant: int) -> void:
 		canopy.position.y = 3.2
 		pick_area.add_child(canopy)
 		add_child(pick_area)
-	marker = Sculpt.torus(self,Vector3(0,0.06,0),radius+0.22,0.025,Sculpt.mat("d3bd80",0.6,0,0.2))
+	if not rings.has(kind):
+		marker = Sculpt.torus(self,Vector3(0,0.06,0),radius+0.22,0.025,Sculpt.mat("d3bd80",0.6,0,0.2))
+		rings[kind] = marker.mesh
+	else: marker = Sculpt.mesh(self,rings[kind],Sculpt.mat("d3bd80",0.6,0,0.2),Vector3(0,0.06,0))
 	marker.visible = false
 
 func _process(delta: float) -> void:
@@ -93,6 +105,7 @@ func harvest(state: GameState) -> Dictionary:
 		"pine": drop = {"wood":state.balance.drops.pine.wood_min + (int(home.x*10) % 3 + 3) % 3}
 		"ore": drop = {"ore":state.balance.drops.ore_rock.ore_min}
 		_: drop = {"stone":state.balance.drops.stone_rock.stone_min}
+	if not drop_override.is_empty(): drop = drop_override.duplicate()
 	if not state.collect(drop): return {"full":true}
 	depleted = true
 	remaining = state.balance.runtime.prey_renew_seconds if kind == "hare" else state.balance.runtime.resource_renew_seconds
