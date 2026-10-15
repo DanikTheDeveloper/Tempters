@@ -1,3 +1,11 @@
+# Current session — W5 territory expansion
+
+W4 core gameplay has been manually tested and approved by the player. Its implementation is preserved in checkpoint `ef952fd`. The working tree was clean at the start of W5. Prior W4 evidence: 320 automated assertions plus two separate-process save/load suites, rendered biome captures and the actual migrated-save diagnostic. W4 is not being rebuilt.
+
+W5 is now authorized; W6 is not. Implementation is proceeding incrementally. Existing W1–W4 behavior and saves must remain intact. Save backup before W5 schema work: `/home/danik/.local/share/godot/save_backups/TEMPTERS-W5-20261015T204538Z`.
+
+## Historical session record
+
 # Current session — occlusion and W4
 
 The player has verified W3. Phase 0 replaces full-shrine picking with InteractionResolver and a visible Services hotspot. CameraOcclusion registers scenery mesh groups, fades obstructing pieces to 35%, restores original material identities, and provides separated clickable markers for nearby hidden enemies. Physical obstacles still block attacks and movement. Rendered regression: 24 checks passed across four approach directions, three zoom levels, overlapping enemies, raid save/load, repeated clicks and rear movement. captures/occlusion.png was captured and inspected in Compatibility on WSL D3D12. Full W1–W3 regression plus occlusion passes: 286 assertions, headless import/startup, and separate-process persistence. Phase 0 is verified; W4 implementation follows this checkpoint.
