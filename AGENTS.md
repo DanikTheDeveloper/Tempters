@@ -50,3 +50,9 @@ Main screen expectations at 1280x720:
 - Work on real files; don't deliver mere pseudo-code, plans or mockups instead of game implementation.
 - Concise final report of what worked, what is unverified, and an explicit next action.
 - Do not silently make promises about Codex five-hour/week usage. The user monitors limits themselves.
+
+## Permanent camera visibility and input contract
+
+Large scenery must register render geometry with CameraOcclusion and its solid body with camera_occluder_body. Registration is reusable for trees, cliffs, walls and structures; collision/navigation must never be disabled to reveal characters. Test camera-to-character obstruction, smoothly fade only intersecting mesh groups to 35% opacity, retain a short visibility hysteresis, and restore the exact original material overrides. Never mutate shared source materials or use whole-character no-depth rendering. Compatibility is the baseline renderer.
+
+InteractionResolver owns world picking. UI consumes input first; active construction handles placement; visible enemies and directly clicked occlusion indicators take priority over services. The shrine's solid collider is excluded from interaction picking; use its clearly marked Services hotspot. Ground behind it must remain navigable. Indicators identify nearby obscured enemies, separate overlapping targets and disappear when unobscured. Unregistered solid obstructions retain concealment. Selecting an obscured enemy never bypasses combat range or physical line of sight. All new scenery must pass rear-target, zoom, rapid-click, cancel and save/load visibility tests.

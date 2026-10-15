@@ -1,3 +1,11 @@
+# Current session — occlusion and W4
+
+The player has verified W3. Phase 0 replaces full-shrine picking with InteractionResolver and a visible Services hotspot. CameraOcclusion registers scenery mesh groups, fades obstructing pieces to 35%, restores original material identities, and provides separated clickable markers for nearby hidden enemies. Physical obstacles still block attacks and movement. Rendered regression: 24 checks passed across four approach directions, three zoom levels, overlapping enemies, raid save/load, repeated clicks and rear movement. captures/occlusion.png was captured and inspected in Compatibility on WSL D3D12. Full W1–W3 regression plus occlusion passes: 286 assertions, headless import/startup, and separate-process persistence. Phase 0 is verified; W4 implementation follows this checkpoint.
+
+Full user-data backup before this session: /home/danik/.local/share/godot/save_backups/TEMPTERS-W4-20261015T153703Z. Live save SHA256: 14c3226fb47bb322ba052121640220969bf72a90eff0eb8f5525f544ed30444d. Tests use independent slots.
+
+W4 is now explicitly requested; begin only after the Phase 0 checkpoint. W5 is not authorized. Historical W3 report follows.
+
 # TEMPTERS — W3 complete; critical movement fix verified
 
 W1, W2 and W3 are implemented and verified within the scope below. W4, procedural world generation and new biomes have not begun. The approved central creature, authored environment, camera and lighting are preserved. WRITING_STYLE.md remains authoritative.

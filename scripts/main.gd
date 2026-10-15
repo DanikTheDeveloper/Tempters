@@ -30,6 +30,8 @@ var gear_signature := ""
 var gear_visual: Node3D
 var buildings: BuildingSystem
 var combat: CombatDirector
+var occlusion: CameraOcclusion
+var interaction: InteractionResolver
 
 func _ready() -> void:
 	low_spec = "--low-spec" in OS.get_cmdline_user_args()
@@ -61,6 +63,11 @@ func _ready() -> void:
 	combat = CombatDirector.new()
 	add_child(combat)
 	combat.setup(self)
+	occlusion = CameraOcclusion.new()
+	hud.add_child(occlusion)
+	occlusion.setup(self)
+	interaction = InteractionResolver.new(self)
+	call_deferred("register_occluders")
 	if persistence_enabled and FileAccess.file_exists(save_path): load_game()
 	if "--clay-review" in OS.get_cmdline_user_args():
 		for node in shrine.find_children("*","MeshInstance3D",true,false):
@@ -152,16 +159,13 @@ func spawn(kind: String, at: Vector3, variant: int) -> Interactable:
 
 func pick(mouse := Vector2(-1,-1)) -> Dictionary:
 	if mouse.x < 0: mouse = get_viewport().get_mouse_position()
-	var origin := camera.project_ray_origin(mouse)
-	var direction := camera.project_ray_normal(mouse)
-	var query := PhysicsRayQueryParameters3D.create(origin,origin+direction*150,26)
-	query.collide_with_areas = true
-	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	if not hit.is_empty():
-		if hit.collider is Area3D: hit.collider = hit.collider.get_parent()
-		return hit
-	var ground = Plane(Vector3.UP,0).intersects_ray(origin,direction)
-	return {"position":ground} if ground != null else {}
+	return interaction.resolve(mouse) if interaction != null else {}
+
+func register_occluders() -> void:
+	for node in targets:
+		if node.kind in ["shrine","pine"]:
+			node.add_to_group("camera_occluder_body")
+			occlusion.register(node.art)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -437,6 +441,7 @@ func load_game(use_previous := false) -> void:
 			if node.persistent_id == entry.id: node.restore_entry(entry)
 	buildings.restore(result.data.buildings)
 	combat.restore(result.data.combat)
+	occlusion.reset()
 	# Navigation requests and modal/animation locks never survive a successful load.
 	paused = false
 	Engine.time_scale = 1.0
