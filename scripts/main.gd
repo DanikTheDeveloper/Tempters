@@ -36,6 +36,7 @@ var interaction: InteractionResolver
 var frontier: WorldStream
 var expedition: Expedition
 var exploration_map: ExplorationMap
+var creatures: CreatureManager
 
 func _ready() -> void:
 	low_spec = "--low-spec" in OS.get_cmdline_user_args()
@@ -82,6 +83,9 @@ func _ready() -> void:
 	exploration_map = ExplorationMap.new()
 	hud.add_child(exploration_map)
 	exploration_map.setup(self)
+	creatures = CreatureManager.new()
+	add_child(creatures)
+	creatures.setup(self)
 	if persistence_enabled and FileAccess.file_exists(save_path): load_game()
 	if "--clay-review" in OS.get_cmdline_user_args():
 		for node in shrine.find_children("*","MeshInstance3D",true,false):
@@ -184,6 +188,7 @@ func register_occluders() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_T: creatures.toggle()
 		if event.keycode == KEY_M: exploration_map.toggle()
 		if event.keycode == KEY_G: buildings.toggle()
 		if event.keycode == KEY_R and not buildings.placing.is_empty(): buildings.angle = fposmod(buildings.angle+PI/2,TAU)
@@ -196,6 +201,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			hud.hint.text = "3D render scale: 65% / HUD remains full resolution" if low_spec else "3D render scale: 100%"
 		if event.keycode in [KEY_I,KEY_B]: hud.inventory_panel.visible = not hud.inventory_panel.visible
 		if event.keycode == KEY_ESCAPE:
+			if creatures.panel.visible:
+				creatures.close()
+				return
 			if exploration_map.expanded:
 				exploration_map.toggle()
 				return
@@ -257,6 +265,7 @@ func reach(object: Interactable) -> float:
 	return object.radius + state.balance.player.interaction_range_world_units * 0.65 + (state.hunting_reach_bonus() if object.kind == "hare" else 0.0)
 
 func cancel() -> void:
+	if is_instance_valid(creatures): creatures.close()
 	if is_instance_valid(combat): combat.clear_orders()
 	if is_instance_valid(buildings): buildings.close()
 	target = null
@@ -277,6 +286,7 @@ func _process(delta: float) -> void:
 		save_game(false)
 	repath -= delta
 	state.tick(delta)
+	creatures.tick(delta)
 	expedition.tick(delta)
 	var cold := smoothstep(0.3,0.9,-frontier.layout.temperature(hero.position))
 	key_light.light_color = Color("ffe0b4").lerp(Color("d5e3f3"),cold)
@@ -311,7 +321,10 @@ func _process(delta: float) -> void:
 			cancel()
 		elif hero.position.distance_to(target.position) <= reach(target)+0.12:
 			hero.path.clear()
-			if target == shrine:
+			if target.kind == "shrine" and target != shrine:
+				if not creatures.panel.visible: creatures.inspect(target.persistent_id)
+				hero.working = false
+			elif target == shrine:
 				hud.menu.show()
 				hero.working = false
 			else:
@@ -466,6 +479,7 @@ func load_game(use_previous := false) -> void:
 			if node.persistent_id == entry.id: node.restore_entry(entry)
 	buildings.restore(result.data.buildings)
 	combat.restore(result.data.combat)
+	creatures.restore(result.data.territory)
 	frontier.restore(result.data.exploration)
 	expedition.restore(result.data.expedition)
 	if exploration_map.expanded: exploration_map.toggle()

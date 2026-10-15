@@ -32,7 +32,7 @@ func setup(type: String, at: Vector3, variant: int, visual: Node3D = null) -> vo
 		"shrine":
 			title = "Widow of Roots / Services"
 			radius = 2.0
-			art = Creatures.shrine(self)
+			art = Creatures.shrine(self) if visual == null else visual
 		"pine":
 			title = "Pine / Chop wood"
 			radius = 0.65

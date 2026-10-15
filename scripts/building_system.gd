@@ -137,14 +137,16 @@ func placement_error(kind: String, at: Vector3, check_routes := true) -> String:
 	for node in structures:
 		if node.kind == "totem": count += 1
 	if kind == "totem" and count >= config.max_totems: return "Totem limit reached."
-	if at.distance_to(game.shrine.position) > config.build_radius: return "Build within %dm of the shrine." % config.build_radius
+	var base := construction_base()
+	var anchor := CreatureManager.point(base)
+	if at.distance_to(anchor) > config.build_radius: return "Build within %dm of the shrine." % config.build_radius
 	if at.distance_to(game.hero.position) > config.placement_reach: return "Move closer to build."
 	var radius: float = config.types[kind].radius
 	if at.distance_to(game.hero.position) < radius+0.65: return "Player occupies this location."
 	# Preserve the authored roots, offering ring and a walkable southern escape lane.
-	if at.distance_to(game.shrine.position) < 3.7+radius: return "Keep the shrine and offerings clear."
-	if absf(at.x) < 1.3+radius and at.z > 0: return "Keep the shrine approach clear."
-	for node in game.targets:
+	if at.distance_to(anchor) < 3.7+radius: return "Keep the shrine and offerings clear."
+	if absf(at.x-anchor.x) < 1.3+radius and at.z > anchor.z+2: return "Keep the shrine approach clear."
+	for node in game.targets+game.frontier.resources:
 		var clearance: float = 2.25 if node.kind == "hare" else node.radius+0.4
 		if at.distance_to(node.home) < clearance+radius: return "Resource area must remain clear."
 	for node in structures:
@@ -152,7 +154,7 @@ func placement_error(kind: String, at: Vector3, check_routes := true) -> String:
 	if is_instance_valid(game.combat):
 		for unit in game.combat.units:
 			if at.distance_to(unit.position) < radius+0.65: return "Unit occupies this location."
-	if check_routes:
+	if check_routes and base.id==game.shrine.persistent_id:
 		var entries: Array = serialize().structures
 		entries.append({"kind":kind,"position":[at.x,0,at.z]})
 		var nav := navigation_for(entries)
@@ -171,7 +173,8 @@ func place(kind: String, at: Vector3) -> bool:
 		placement_status.text = error
 		return false
 	# No yields between validation, object creation and deduction.
-	var data := {"id":next_id,"kind":kind,"tier":1,"health":config.types[kind].health,"fuel":config.totem_fuel_seconds if kind == "totem" else 0,"position":[at.x,0,at.z],"angle":angle}
+	var base := construction_base()
+	var data := {"base_id":"" if base.id==game.shrine.persistent_id else base.id,"id":next_id,"kind":kind,"tier":1,"health":config.types[kind].health,"fuel":config.totem_fuel_seconds if kind == "totem" else 0,"position":[at.x,0,at.z],"angle":angle}
 	add_structure(data)
 	next_id += 1
 	pay(config.types[kind].inputs)
@@ -197,7 +200,7 @@ func action_error(id: String) -> String:
 	if id == "refuel" and (selected.kind != "totem" or selected.fuel > config.totem_fuel_seconds-1): return "No maintenance needed."
 	if id == "upgrade":
 		if selected.tier >= 2: return "Maximum tier reached."
-		if game.state.level < config.upgrade_level: return "Requires shrine level %d." % config.upgrade_level
+		if base_record(selected.base_id).level < config.upgrade_level: return "Requires shrine level %d." % config.upgrade_level
 	if not id in ["repair","refuel","upgrade"]: return "Unknown action."
 	return can_pay(config[id])
 
@@ -237,13 +240,14 @@ func destroy(node: BaseStructure) -> void:
 	rebuild_navigation()
 	game.save_game(false)
 
-func production() -> float:
-	if game.state.services_locked: return 0.0
+func production(base_id := "") -> float:
+	var base := base_record(base_id)
+	if base.is_empty() or base.owner!="player": return 0.0
 	var strengths: Array[float] = []
 	for node in structures:
-		if node.kind != "totem" or node.fuel <= 0: continue
+		if node.kind != "totem" or node.fuel <= 0 or node.base_id!=base_id: continue
 		var strength: float = config.upgrade_multiplier if node.tier == 2 else 1.0
-		if node.position.distance_to(game.shrine.position) > config.totem_inner_radius: strength *= config.totem_outer_efficiency
+		if node.position.distance_to(CreatureManager.point(base)) > config.totem_inner_radius: strength *= config.totem_outer_efficiency
 		strengths.append(strength)
 	strengths.sort()
 	strengths.reverse()
@@ -260,6 +264,10 @@ func advance(delta: float) -> void:
 		for node in structures:
 			if node.kind == "totem" and node.fuel > 0: step = minf(step,node.fuel)
 		game.state.satisfaction = minf(game.state.cap(),game.state.satisfaction+production()*step)
+		if is_instance_valid(game.creatures):
+			for id in game.creatures.records:
+				var record: Dictionary = game.creatures.records[id]
+				record.satisfaction = minf(game.creatures.cap(record),record.satisfaction+production(id)*step)
 		for node in structures:
 			if node.kind == "totem":
 				node.fuel = maxf(0,node.fuel-step)
@@ -324,7 +332,7 @@ func restore(data: Dictionary) -> void:
 	for entry in data.structures: add_structure(entry)
 	rebuild_navigation()
 
-func validate_data(data: Variant, player: Vector3) -> String:
+func validate_data(data: Variant, player: Vector3, registry: Dictionary = {}) -> String:
 	if not data is Dictionary or not data.get("structures") is Array: return "Invalid structures."
 	if not GameState.whole_number(data.get("next_id")) or data.next_id < 1 or data.next_id > 1000000000: return "Invalid structure sequence."
 	if data.structures.size() > config.max_structures: return "Structure limit exceeded."
@@ -346,9 +354,13 @@ func validate_data(data: Variant, player: Vector3) -> String:
 		if entry.health <= 0 or entry.health > config.types[entry.kind].health*(config.upgrade_multiplier if entry.tier == 2 else 1): return "Invalid durability."
 		if entry.fuel < 0 or entry.fuel > config.totem_fuel_seconds or (entry.kind != "totem" and entry.fuel != 0): return "Invalid totem fuel."
 		if absf(entry.angle) > TAU: return "Invalid structure rotation."
+		if not entry.get("base_id","") is String: return "Invalid structure territory."
+		var base := base_record(entry.get("base_id",""),registry)
+		if base.is_empty(): return "Unknown structure territory."
+		var anchor := CreatureManager.point(base)
 		var at := Vector3(entry.position[0],0,entry.position[2])
 		var radius: float = config.types[entry.kind].radius
-		if at.distance_to(game.shrine.position) > config.build_radius or at.distance_to(game.shrine.position) < 3.7+radius or (absf(at.x) < 1.3+radius and at.z > 0): return "Structure blocks shrine access."
+		if at.distance_to(anchor) > config.build_radius or at.distance_to(anchor) < 3.7+radius or (absf(at.x-anchor.x) < 1.3+radius and at.z > anchor.z+2): return "Structure blocks shrine access."
 		if at.distance_to(player) < radius+0.23: return "Player overlaps a structure."
 		for node in game.targets:
 			var clearance: float = 2.25 if node.kind == "hare" else node.radius+0.4
@@ -364,3 +376,13 @@ func validate_data(data: Variant, player: Vector3) -> String:
 		var route := nav.route(player if maxf(absf(player.x),absf(player.z))<=16 else Vector3(0,0,5),node.home,game.reach(node))
 		if route.is_empty() or route[-1].distance_to(node.home) > game.reach(node)+0.1: return "Structures block resource access."
 	return ""
+
+func base_record(id := "", registry: Dictionary = {}) -> Dictionary:
+	if not is_instance_valid(game.creatures): return {"position":[0,0,-2],"level":game.state.level,"owner":"player","id":"shrine_1"}
+	if id.is_empty() or id==game.shrine.persistent_id: return game.creatures.home_record()
+	return registry.get(id,{}) if not registry.is_empty() else game.creatures.get_record(id)
+
+func construction_base() -> Dictionary:
+	if not is_instance_valid(game.creatures): return base_record()
+	var record: Dictionary = game.creatures.nearest(game.hero.position)
+	return base_record() if record.is_empty() else record

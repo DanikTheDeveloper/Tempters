@@ -2,6 +2,8 @@ class_name CombatUnit
 extends CharacterBody3D
 
 var uid := 0
+var territory_id := ""
+var base_id := ""
 var kind := "raider"
 var health := 42.0
 var maximum_health := 42.0
@@ -19,6 +21,7 @@ var label: Label3D
 
 func setup(data: Dictionary, config: Dictionary, wave: int) -> void:
 	uid = int(data.id)
+	base_id = data.get("base_id","")
 	kind = data.kind
 	health = data.health
 	position = Vector3(data.position[0],0,data.position[2])
@@ -63,4 +66,4 @@ func step(delta: float) -> void:
 	label.text = "%d / %d" % [health,maximum_health] if health < maximum_health else ""
 
 func serialize() -> Dictionary:
-	return {"id":uid,"kind":kind,"health":health,"position":[position.x,0,position.z],"home":[home.x,0,home.z],"cooldown":cooldown,"scout":scout}
+	return {"id":uid,"base_id":base_id,"kind":kind,"health":health,"position":[position.x,0,position.z],"home":[home.x,0,home.z],"cooldown":cooldown,"scout":scout}

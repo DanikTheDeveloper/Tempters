@@ -68,6 +68,8 @@ func update_chunks() -> void:
 	if next == center: return
 	center = next
 	var wanted: Array[Vector2i] = [Vector2i.ZERO,Vector2i(0,-1)]
+	for pinned in game.creatures.pinned_chunks():
+		if not wanted.has(pinned): wanted.append(pinned)
 	for x in range(-1,2):
 		for z in range(-1,2):
 			var cell := center+Vector2i(x,z)
@@ -88,6 +90,7 @@ func update_chunks() -> void:
 	nav_dirty = true
 
 func unload(cell: Vector2i) -> void:
+	game.creatures.unload_site(cell)
 	for node in chunks[cell].nodes:
 		record(node)
 		if game.target == node: game.cancel()
@@ -139,7 +142,9 @@ func run_job() -> void:
 			game.occlusion.register(node.art)
 	else:
 		chunk_data.ready = true
-		if job.cell != Vector2i.ZERO:
+		if not layout.creature_site(job.cell).is_empty():
+			game.creatures.spawn_site(job.cell)
+		elif job.cell != Vector2i.ZERO:
 			var landmark_at := layout.landmark(job.cell)
 			var ruin: Node3D = ruin_templates[layout.biome(landmark_at)].duplicate()
 			chunk_data.root.add_child(ruin)
@@ -180,9 +185,10 @@ func rebuild_nav(around: Vector2i) -> void:
 			if region.has_area(): nav.grid.fill_solid_region(region,true)
 	for node in game.targets+resources:
 		if node.kind != "hare": nav.block(node.home,node.radius)
+	for node in game.creatures.nodes.values(): nav.block(node.position,node.radius)
 	for structure in game.buildings.structures: nav.block(structure.position,structure.radius)
 	for cell in chunks:
-		if cell != Vector2i.ZERO and chunks[cell].ready:
+		if cell != Vector2i.ZERO and chunks[cell].ready and layout.creature_site(cell).is_empty():
 			for side in [-1,1]: nav.block(layout.landmark(cell)+Vector3(side*1.6,0,0),0.6)
 	if nav_cache.size()>=2: nav_cache.clear()
 	nav_cache[around] = nav

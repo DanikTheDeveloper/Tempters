@@ -156,7 +156,7 @@ func refresh() -> void:
 	stats.text = "Health %d / %d   ·   Weight %.0f / %.0f" % [state.health,state.max_health(),state.weight(),state.capacity()]
 	hp.max_value = state.max_health()
 	hp.value = state.health
-	mood.text = "Satisfaction %.1f / %d   ·   Level %d\n%s" % [state.satisfaction,state.cap(),state.level,state.mood()]
+	mood.text = "Home Satisfaction %.1f / %d   ·   Level %d\n%s" % [state.satisfaction,state.cap(),state.level,state.mood()]
 	bond_text.text = "Expedition Bond cap %d / Within shrine aura" % state.bond_cap()
 	drain_text.text = "Drain: %.3f / sec   ·   Raw meat: +%d" % [state.drain(),state.balance.temptress.feed_raw_meat_gain]
 	sat.max_value = state.cap()

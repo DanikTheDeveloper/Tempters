@@ -135,7 +135,7 @@ func run() -> void:
 	file.store_string(JSON.stringify(legacy))
 	file.close()
 	var migrated := SaveStore.read(game.save_path,game)
-	check(migrated.error.is_empty() and migrated.data.version==4 and migrated.data.character.inventory.wood==legacy.character.inventory.wood and migrated.data.character.level==legacy.character.level,"W3 migration preserves character and grants Bond: "+migrated.error)
+	check(migrated.error.is_empty() and migrated.data.version==5 and migrated.data.character.inventory.wood==legacy.character.inventory.wood and migrated.data.character.level==legacy.character.level,"W3 migration preserves character and grants Bond: "+migrated.error)
 	var bad: Dictionary = migrated.data.duplicate(true)
 	bad.expedition.bond = -1
 	check(not SaveStore.validate(bad,game).is_empty(),"invalid Bond rejected")

@@ -47,3 +47,18 @@ func descriptors(cell: Vector2i) -> Array[Dictionary]:
 	return result
 func landmark(cell: Vector2i) -> Vector3:
 	return Vector3(cell.x*CHUNK+6,0,cell.y*CHUNK+6)
+
+# One candidate per broad sector. Existing W4 resource coordinates never change:
+# creatures occupy the six-metre clearings already reserved for landmarks.
+func creature_site(cell: Vector2i) -> Dictionary:
+	var sector := Vector2i(floori(float(cell.x)/8),floori(float(cell.y)/8))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("creature:1:%d:%d:%d" % [seed_value,sector.x,sector.y])
+	var chosen := sector*8+Vector2i(rng.randi_range(2,5),rng.randi_range(2,5))
+	# The first eastern and western expeditions have a reachable opportunity.
+	if sector == Vector2i.ZERO: chosen = Vector2i(4,0)
+	if sector == Vector2i(-1,0): chosen = Vector2i(-4,0)
+	if cell != chosen: return {}
+	var at := landmark(cell)
+	if maxf(absf(at.x),absf(at.z))>LIMIT-32 or at.length()<220: return {}
+	return {"id":"shrine:%d:%d" % [cell.x,cell.y],"position":[at.x,0,at.z],"biome":biome(at)}

@@ -17,11 +17,14 @@ func resolve(mouse: Vector2) -> Dictionary:
 	query.collide_with_areas = true
 	# The shrine's collision is for navigation/combat, never the interaction hit area.
 	query.exclude = [game.shrine.get_rid()]
+	for node in game.creatures.nodes.values(): query.exclude.append(node.get_rid())
 	var hit: Dictionary = game.get_world_3d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
 		if hit.collider is Area3D: hit.collider = hit.collider.get_parent()
 		if not (hit.collider is Interactable or hit.collider is CombatUnit or hit.collider is BaseStructure): return ground(mouse)
 		return hit
+	for node in game.creatures.nodes.values():
+		if mouse.distance_to(game.camera.unproject_position(node.position+Vector3(0,0.35,2.3)))<=22: return {"collider":node,"position":node.position}
 	var hotspot: Vector2 = game.camera.unproject_position(game.shrine.position+Vector3(0,0.35,2.3))
 	if mouse.distance_to(hotspot) <= 22: return {"collider":game.shrine,"position":game.shrine.position}
 	return ground(mouse)

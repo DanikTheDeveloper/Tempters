@@ -43,5 +43,10 @@ func _draw() -> void:
 		var at: Vector3 = game.frontier.layout.landmark(Vector2i(int(pair[0]),int(pair[1])))
 		var point := origin+(Vector2(at.x,at.z)-center)*scale_factor
 		if Rect2(Vector2(8,24),size-Vector2(16,32)).has_point(point): draw_rect(Rect2(point-Vector2(3,3),Vector2(6,6)),Color("8cacbf"))
+	for record in game.creatures.records.values():
+		if not record.discovered: continue
+		var point := origin+(Vector2(record.position[0],record.position[2])-center)*scale_factor
+		if Rect2(Vector2(8,24),size-Vector2(16,32)).has_point(point):
+			draw_circle(point,5,Color("e5c27d") if record.owner=="player" else Color("c56f61") if record.owner in ["npc","contested"] else Color("cabed2"))
 	draw_circle(origin,3,Color("e7d9bf"))
 	draw_string(ThemeDB.fallback_font,Vector2(8,17),game.frontier.layout.biome(game.hero.position).capitalize()+" · Map [M]",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("e7d9bf"))

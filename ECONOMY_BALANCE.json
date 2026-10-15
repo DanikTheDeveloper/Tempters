@@ -442,5 +442,44 @@
     "prey_renew_seconds": 35,
     "resource_renew_seconds": 65,
     "autosave_seconds": 30
+  },
+  "territory": {
+    "sector_chunks": 8,
+    "discovery_radius": 18,
+    "capture_seconds": 15,
+    "capture_inputs": {
+      "raw_meat": 6,
+      "ingot": 2
+    },
+    "initial_satisfaction": 35,
+    "travel_source_cost": 20,
+    "travel_destination_cost": 10,
+    "maintenance_multiplier": 0.45,
+    "types": {
+      "forest": {
+        "name": "Widow of Roots",
+        "appetite": 1.0,
+        "feed_gain": 4,
+        "bond_bonus": 0,
+        "smelt_multiplier": 1.0
+      },
+      "desert": {
+        "name": "Saffron Oracle",
+        "appetite": 1.35,
+        "feed_gain": 4,
+        "bond_bonus": 0,
+        "smelt_multiplier": 0.6
+      },
+      "snow": {
+        "name": "Frost Matron",
+        "appetite": 1.1,
+        "feed_gain": 5,
+        "bond_bonus": 30,
+        "smelt_multiplier": 1.0
+      }
+    },
+    "raid_interval": 900,
+    "raid_warning": 60,
+    "contest_seconds": 60
   }
 }

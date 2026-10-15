@@ -121,3 +121,10 @@ func _draw() -> void:
 	if game.hero.position.distance_to(game.shrine.position) < 25:
 		draw_arc(hotspot,15,0,TAU,24,Color("b59658"),1.5,true)
 		draw_string(ThemeDB.fallback_font,hotspot+Vector2(-24,30),"Services",HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("e7d9bf"))
+
+	if is_instance_valid(game.creatures):
+		for node in game.creatures.nodes.values():
+			if game.hero.position.distance_to(node.position)>25: continue
+			var p: Vector2 = game.camera.unproject_position(node.position+Vector3(0,0.35,2.3))
+			draw_arc(p,15,0,TAU,24,Color("b59658"),1.5,true)
+			draw_string(ThemeDB.fallback_font,p+Vector2(-24,30),"Shrine",HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("e7d9bf"))

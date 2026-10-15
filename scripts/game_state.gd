@@ -174,7 +174,7 @@ func try_service(id: String) -> Dictionary:
 func serialize() -> Dictionary:
 	return {"inventory":inventory.duplicate(),"equipment":equipment.duplicate(),"level":level,"health":health,"satisfaction":satisfaction,"offerings":offerings}
 
-func validate_data(data: Variant) -> String:
+func validate_data(data: Variant, highest_shrine_level := 0) -> String:
 	if not data is Dictionary: return "Invalid character data."
 	for key in ["inventory","equipment","level","health","satisfaction","offerings"]:
 		if not data.has(key): return "Missing character data."
@@ -189,7 +189,7 @@ func validate_data(data: Variant) -> String:
 		for recipe_id in balance.progression.w2_recipes:
 			var recipe: Dictionary = balance.recipes[recipe_id]
 			if recipe.output.has(id):
-				if data.level < recipe.required_level: return "Equipment level mismatch."
+				if maxi(int(data.level),highest_shrine_level) < recipe.required_level: return "Equipment level mismatch."
 				if recipe.has("requires_equipment") and not data.equipment.has(recipe.requires_equipment): return "Missing equipment prerequisite."
 	for key in ["health","satisfaction"]:
 		if not (data[key] is int or data[key] is float) or not is_finite(float(data[key])) or data[key] < 0: return "Invalid character value."

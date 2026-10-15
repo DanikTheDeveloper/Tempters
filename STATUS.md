@@ -4,6 +4,12 @@ W4 core gameplay has been manually tested and approved by the player. Its implem
 
 W5 is now authorized; W6 is not. Implementation is proceeding incrementally. Existing W1–W4 behavior and saves must remain intact. Save backup before W5 schema work: `/home/danik/.local/share/godot/save_backups/TEMPTERS-W5-20261015T204538Z`.
 
+## W5 implementation checkpoint
+
+Implemented: deterministic rare sites in existing W4 clearings; streamed forest/desert/frost creature variants; discovery/map markers; NPC guards; paid interruptible capture; independent feeding, Satisfaction, level and service transactions; desert smelting discount; frost Bond bonus; secondary palisades/totems and golems; local territory attacks and bounded distant defense resolution; free recapture after loss; destination selection and atomic two-endpoint travel; nearest-owned Bond and recall; schema-5 registry migration preserving W4 data.
+
+Current evidence: 72 W5 integration assertions pass; targeted building (48) and W4 world (34) tests pass. Godot import succeeds. The rendered desert capture was inspected. Full post-integration regressions, failed-defense/recapture, separate-process W5 persistence and final frost visual inspection are still pending. **W5 is not yet marked complete.** Home combat remains the original W3 system. Secondary territory attacks use 900s preparation / 60s warning / 60s contest. Defensive construction remains globally capped at 24 structures, five totems and three golems to bound scene cost.
+
 ## Historical session record
 
 # Current session — occlusion and W4

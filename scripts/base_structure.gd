@@ -2,6 +2,7 @@ class_name BaseStructure
 extends StaticBody3D
 
 var uid := 0
+var base_id := ""
 var kind := "palisade"
 var tier := 1
 var health := 100.0
@@ -15,6 +16,7 @@ var ember: MeshInstance3D
 func setup(data: Dictionary, settings: Dictionary) -> void:
 	config = settings
 	uid = int(data.id)
+	base_id = data.get("base_id","")
 	kind = data.kind
 	tier = int(data.tier)
 	health = data.health
@@ -53,4 +55,4 @@ func update_damage() -> void:
 	if ember != null: ember.visible = fuel > 0
 
 func serialize() -> Dictionary:
-	return {"id":uid,"kind":kind,"tier":tier,"health":health,"fuel":fuel,"position":[position.x,0,position.z],"angle":rotation.y}
+	return {"id":uid,"base_id":base_id,"kind":kind,"tier":tier,"health":health,"fuel":fuel,"position":[position.x,0,position.z],"angle":rotation.y}

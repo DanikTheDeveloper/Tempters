@@ -50,7 +50,7 @@ func clear_orders() -> void:
 func hostiles(include_scouts := false) -> Array[CombatUnit]:
 	var result: Array[CombatUnit] = []
 	for unit in units:
-		if unit.kind == "raider" and (include_scouts or not unit.scout): result.append(unit)
+		if unit.kind == "raider" and (include_scouts or (not unit.scout and unit.territory_id.is_empty())): result.append(unit)
 	return result
 
 func defenders() -> Array[CombatUnit]:
@@ -103,10 +103,14 @@ func select(unit: CombatUnit) -> void:
 
 func deploy(at: Vector3) -> void:
 	if not is_instance_valid(deploying): return
-	if at.distance_to(game.shrine.position) > config.defense_radius:
+	if at.distance_to(base_anchor(deploying.base_id)) > config.defense_radius:
 		game.hud.notice.text = "Guard position is outside the defense radius."
 		return
-	deploying.home = game.navigation.point(game.navigation.nearest(at))
+	var path: PackedVector3Array = game.navigation.route(deploying.position,at)
+	if path.is_empty():
+		game.hud.notice.text = "No clear route to guard position."
+		return
+	deploying.home = path[-1]
 	deploying.repath = 0
 	deploying = null
 	game.save_game(false)
@@ -177,12 +181,15 @@ func advance_clock(delta: float) -> void:
 		game.save_game(false)
 	if phase == "warning" and timer <= 0: start_raid()
 	if phase == "raid" and timer <= 0:
-		for unit in hostiles(true): remove_unit(unit)
+		for unit in hostiles(true):
+			if unit.territory_id.is_empty(): remove_unit(unit)
 	if phase == "occupied" and timer <= 0:
-		for unit in hostiles(true): remove_unit(unit)
+		for unit in hostiles(true):
+			if unit.territory_id.is_empty(): remove_unit(unit)
 
 func start_raid() -> void:
-	for scout in hostiles(true): remove_unit(scout)
+	for scout in hostiles(true):
+		if scout.territory_id.is_empty(): remove_unit(scout)
 	phase = "raid"
 	timer = config.raid_duration
 	wave += 1
@@ -253,13 +260,13 @@ func _physics_process(delta: float) -> void:
 		var victim: Node3D = null
 		var best := INF
 		if unit.kind == "golem":
-			for enemy in hostiles():
+			for enemy in hostiles(true):
 				var d: float = unit.position.distance_to(enemy.position)
-				if enemy.position.distance_to(game.shrine.position) <= config.defense_radius and d < best:
+				if enemy.position.distance_to(base_anchor(unit.base_id)) <= config.defense_radius and d < best:
 					victim = enemy
 					best = d
 		else:
-			if immunity <= 0 and unit.position.distance_to(game.hero.position) < 4.5:
+			if immunity <= 0 and unit.position.distance_to(game.hero.position) < 4.5 and (unit.territory_id.is_empty() or game.hero.position.distance_to(unit.home)<10):
 				victim = game.hero
 				best = unit.position.distance_to(game.hero.position)
 			for defender in defenders():
@@ -293,6 +300,8 @@ func _physics_process(delta: float) -> void:
 			else: route(unit,victim.position,reach*0.85)
 		elif unit.kind == "golem":
 			if unit.position.distance_to(unit.home) > 0.4: route(unit,unit.home,0)
+		elif not unit.territory_id.is_empty():
+			if unit.position.distance_to(unit.home)>0.4: route(unit,unit.home,0)
 		else:
 			if unit.position.distance_to(game.shrine.position) <= 3.4:
 				unit.path.clear()
@@ -329,7 +338,8 @@ func refresh() -> void:
 
 func serialize() -> Dictionary:
 	var actors := []
-	for unit in units: actors.append(unit.serialize())
+	for unit in units:
+		if unit.territory_id.is_empty(): actors.append(unit.serialize())
 	return {"phase":phase,"timer":timer,"wave":wave,"capture":capture_progress,"reward":pending_reward,"next_id":next_id,"immunity":immunity,"units":actors}
 
 func fresh_data() -> Dictionary:
@@ -353,7 +363,7 @@ func restore(data: Dictionary) -> void:
 	set_occupied(phase == "occupied")
 	refresh()
 
-func validate_data(data: Variant, building_data: Dictionary) -> String:
+func validate_data(data: Variant, building_data: Dictionary, registry: Dictionary = {}) -> String:
 	if not data is Dictionary: return "Invalid combat state."
 	for key in ["phase","timer","wave","capture","reward","next_id","immunity","units"]:
 		if not data.has(key): return "Incomplete combat state."
@@ -388,9 +398,16 @@ func validate_data(data: Variant, building_data: Dictionary) -> String:
 			if at.distance_to(Vector3(structure.position[0],0,structure.position[2])) < game.buildings.config.types[structure.kind].radius+0.23: return "Actor overlaps a structure."
 		if entry.kind == "golem":
 			golems += 1
-			if entry.scout or Vector3(entry.home[0],0,entry.home[2]).distance_to(game.shrine.position) > config.defense_radius+1: return "Invalid guard assignment."
+			if not entry.get("base_id","") is String: return "Invalid defender territory."
+			var base: Dictionary = game.buildings.base_record(entry.get("base_id",""),registry)
+			if base.is_empty(): return "Unknown defender territory."
+			if entry.scout or Vector3(entry.home[0],0,entry.home[2]).distance_to(CreatureManager.point(base)) > config.defense_radius+1: return "Invalid guard assignment."
 		elif entry.scout: scouts += 1
 		else: enemies += 1
 	if golems > config.max_golems or enemies > config.max_raiders or scouts > 1: return "Actor limit exceeded."
 	if (data.phase == "peace" and enemies+scouts > 0) or (data.phase == "warning" and enemies > 0) or (data.phase in ["raid","occupied"] and scouts > 0): return "Raid actors do not match phase."
 	return ""
+
+func base_anchor(id: String) -> Vector3:
+	var base: Dictionary = game.buildings.base_record(id)
+	return CreatureManager.point(base) if not base.is_empty() else game.shrine.position
