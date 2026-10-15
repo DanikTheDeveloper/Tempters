@@ -22,7 +22,8 @@ func setup(type: String, at: Vector3, variant: int) -> void:
 	persistent_id = "%s_%d" % [type,variant]
 	position = at
 	home = at
-	collision_layer = 2
+	# Prey remain ray-pickable, but cannot pin the player against a grid waypoint.
+	collision_layer = 8 if kind == "hare" else 2
 	collision_mask = 0
 	match kind:
 		"shrine":
@@ -73,7 +74,7 @@ func _process(delta: float) -> void:
 		if remaining <= 0:
 			depleted = false
 			art.visible = true
-			collision_layer = 2
+			collision_layer = 8 if kind == "hare" else 2
 			if stump != null: stump.visible = false
 			if is_instance_valid(drop_label): drop_label.queue_free()
 		return
@@ -109,7 +110,7 @@ func restore_entry(entry: Dictionary) -> void:
 	depleted = entry.depleted
 	remaining = entry.remaining
 	art.visible = not depleted
-	collision_layer = 0 if kind == "hare" and depleted else 2
+	collision_layer = (0 if depleted else 8) if kind == "hare" else 2
 	if stump != null: stump.visible = depleted
 	if is_instance_valid(drop_label): drop_label.queue_free()
 	if depleted and kind != "hare": drop_label = Sculpt.label(self,"Regrowing",Vector3(0,0.4,0),18)

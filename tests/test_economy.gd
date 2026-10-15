@@ -109,7 +109,7 @@ func run() -> void:
 	var hare: Interactable = game.targets[-1]
 	for item in game.state.inventory: game.state.inventory[item] = 0
 	hare.harvest(game.state)
-	game.save_path = "user://w2_test_save.json"
+	game.save_path = "user://w2_test_save_%d.json" % OS.get_process_id()
 	game.persistence_enabled = true
 	game.save_game()
 	var saved := SaveStore.read(game.save_path,game)

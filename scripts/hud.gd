@@ -6,6 +6,7 @@ signal discard_requested(item: String)
 signal service_requested(id: String)
 signal save_requested
 signal load_requested
+signal previous_requested
 signal close_requested
 var services: OptionButton
 var details: Label
@@ -126,6 +127,7 @@ func setup(model: GameState) -> void:
 	bag.add_child(saves)
 	button(saves,"Save [F5]",func(): save_requested.emit())
 	button(saves,"Load [F9]",func(): load_requested.emit())
+	button(bag,"Load previous save [F8]",func(): previous_requested.emit())
 	button(bag,"Close inventory [I]",func(): inventory_panel.hide())
 	inventory_panel.hide()
 	menu = panel(Vector2(876,150),Vector2(380,0))

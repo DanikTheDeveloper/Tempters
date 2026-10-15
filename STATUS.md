@@ -1,53 +1,75 @@
-# TEMPTERS — W2 complete, 2026-10-14
+# TEMPTERS — W3 construction checkpoint
 
-**W2 implemented and verified. W3 has not begun.** The user-approved 2.5D environment and central creature are preserved. Existing mesh builders, scene files, camera setup, world placement, lighting and movement controller were retained. All runtime text follows WRITING_STYLE.md.
+**W3 is IN PROGRESS, not complete.** This session delivers a stable construction-and-totem subset. W1/W2 remain playable and verified. Golems, combat, enemy factions, raids and capture/recovery are unfinished. W4 has not begun.
 
-## Playable systems
+## Verified starting point
 
-- Preserved W1: planar click navigation and obstacle avoidance, moving-hare hunting, harvesting, capacity-limited inventory, resource renewal, dormant feeding, pause, zoom and GPU launch workaround.
-- Shrine service panel with recipe selection, effect preview, exact resource/Satisfaction costs, level requirements and shortage feedback. Close cancels the interaction; HUD input does not move the character.
-- Atomic transactions for smelting, equipment, healing and shrine upgrades. Failed requests consume nothing. Remote and paused requests are rejected; cooldowns block rapid duplicate clicks. Feeding remains possible at zero Satisfaction.
-- Smelt two ore into one ingot for 10 Satisfaction. Stone axe, spear, hide armor, reinforced backpack, iron pickaxe, iron axe and reinforced armor are automatically equipped with actual gameplay benefits. Equipment cannot be purchased twice. Original accessory meshes show acquired gear on the existing character.
-- Axes improve chopping from 0.9 seconds to 0.55/0.35; pickaxe improves mineral work to 0.5; spear improves hunting to 0.45 and adds 0.65 reach. Backpack increases capacity from 30 weight/12 stacks to 40/16. Armor stages each add 20 maximum Health without healing.
-- Restore up to 25 Health for 10 Satisfaction with a brief magical disappearance/reappearance and rising ritual ring. New characters begin at 75/100 Health so the service is useful before combat damage arrives. Crafting creates a bounded spark burst at an offering bowl and the existing creature pulse.
-- Shrine levels 1–5: Satisfaction caps 100/130/160/200/250; appetite multipliers 1/1.15/1.3/1.5/1.75. Material and Satisfaction upgrade requirements unlock meaningful equipment tiers. Bond cap scales by 30 per level; actual expedition drain remains W4.
-- Scrollable resource/equipment inventory, capacity summary, discard controls and save/load buttons. All economic values and gameplay timing live in ECONOMY_BALANCE.json.
-- Persistent schema-v1 user://save_slot_1.json: inventory, equipment, shrine ownership/level, offerings, Health, Satisfaction, player position, stable world IDs, depletion and renewal timers. Temporary-file flush/close then atomic rename. Load validates the entire snapshot before any live mutation. Unsupported, malformed, duplicate-ID, invalid-position and invalid-capacity data are rejected. Timers do not advance offline, and depleted nodes cannot be harvested again after loading.
-- F5 saves, F9 loads. Graphical play auto-loads on startup and saves after transactions, every 30 active seconds and on normal window close. A malformed existing file blocks automatic overwrite; explicit Save can replace it. Headless smoke runs do not use the normal slot; persistence tests use disposable files.
+Read the agent contract, writing policy, game/art/creature/technical documents, balance data, milestone prompt, QA checklist and implementation before changes. The clean W2 checkpoint passed editor import, bounded launch, 13 system assertions, 12 scene/input assertions, 49 economy/persistence assertions and cross-process save restoration before W3 work began.
 
-## Verification performed
+## Implemented in this checkpoint
 
-Command: `bash tests/verify.sh` under Debian WSL with Godot 4.7.2 Standard.
+- Build toolbar and G shortcut. Choose Palisade or Ward totem, then a ground-snapped mouse location. Green/red previews show validity; R rotates; right-click/Escape cancel without payment. Actual click coordinates determine placement, preventing stale-preview placement.
+- Atomic resource costs from existing recipes: 4 wood for a palisade; 8 wood + 2 hide for a totem. Failed overlap, range, resource, pause and capacity-of-world checks consume nothing. No inventory kits or decorative purchase buttons.
+- Placement within 9m of the shrine and 5m of the player. Conservative circular footprints reject overlap with the hero, resources, shrine roots and other structures. The southern approach stays open. A candidate navigation grid verifies resource access before committing. At most 24 structures and five totems.
+- Physical static-body barriers and rebuilt A* navigation. Actual player locomotion around a newly constructed palisade is tested. Removing/destroying structures clears their collision and navigation obstruction.
+- Original authored meshes: irregular pointed timber stakes, stone footings, crossrails, bindings and reinforced metal bracing; carved bone ward posts with hanging charms, stone bases, collars and an active ember. Existing terrain, shrine, player, camera, lights, scene files and original geometry builders are unchanged.
+- Mouse-selectable structures, approach behavior and concise inspection UI. Palisades have 100 durability; totems 60. Reinforcement at shrine level 2 costs 2 wood + 1 ingot and grants 50% more maximum durability without repairing current damage. Totem reinforcement also boosts output by 50%.
+- Repair restores up to 50 durability for 2 wood + 1 stone. Dismantle is free, without refunds. Damage produces visible leaning/sinking; zero durability removes the structure. Damage/destruction are exercised through tests; there is no hostile damage source yet.
+- Maintained totems generate Satisfaction at 0.015/s for the strongest inner totem; subsequent active strengths receive 60% geometric diminishing returns. Beyond 6m output is reduced to 60%. Strongest contributions rank first, so placement order is irrelevant. Combined output is capped at 0.045/s and Satisfaction never exceeds its level cap.
+- Each totem has 300 active seconds of maintenance. One wood + one hide restores the timer. Expired embers go dark and production stops. Time is consumed even at full Satisfaction; no offline income, paused income or indefinite unattended farming. Large simulation steps split at expiry boundaries to avoid overproduction.
+- Schema-v2 saves persist stable structure IDs, positions, rotations, tiers, durability and remaining maintenance time alongside all W2 state. Schema-v1 W2 saves explicitly migrate to an empty building set, preserving the character and resources. Load validates the whole snapshot before applying it and rebuilds physics/navigation. Invalid structure values, IDs, overlaps and blocked access are rejected.
+- Construction/repair/maintenance/reinforcement/dismantling use the existing autosave path. Cross-process restoration now verifies a constructed palisade as well as W2 inventory and depleted prey.
+
+## Validation
+
+Run `bash tests/verify.sh` from Debian WSL. Godot: 4.7.2 Standard, Compatibility.
 
 | Check | Result |
 | --- | --- |
-| Editor import and bounded headless run | PASS; no script/runtime errors |
-| W1 pure systems | 13 assertions PASS |
-| W1 scene, physics and input | 12 assertions PASS |
-| W2 economy, service callbacks, pause, persistence and layout | 49 assertions PASS |
-| Save in one process, startup restoration in another | PASS in both processes |
-| Rendered W2 suite via `bash run.sh --script tests/test_economy.gd -- --visual` | 49 assertions PASS on D3D12 NVIDIA GTX 1650 |
-| Actual rendered W2 screenshot | Captured and inspected at 1280x720; panels fit and central creature stays visible |
-| Runtime forced-humor string search | No rejected phrases found in scripts, scenes, assets or economy data |
+| Headless editor import and bounded launch | PASS |
+| W1 system checks | 13 PASS |
+| W1 scene/physics/input checks | 12 PASS |
+| W2 economy and persistence checks | 49 PASS |
+| W3 construction, totems, input, collision, migration and persistence | 48 PASS |
+| Cross-process save and startup restoration, including a barrier | PASS |
+| Rendered W3 building suite on WSL D3D12 NVIDIA GTX 1650 | 48 PASS |
+| Actual 1280x720 construction screenshot | Captured and inspected |
+| Changed runtime strings and rejected-phrase scan | Reviewed; no forced humor introduced |
 
-The tests include exact-cost transactions, insufficiency without mutation, dormancy/revival, every progression tier and gear effect, full-health rejection, forced capacity/slot failures, proximity, repeated clicks, actual service-button wiring, corrupted/unsupported saves, write failures, world restoration and reload loot protection. The rendered tests use constructed states to inspect late-game gear and UI; they are not a natural full-progression playthrough.
+Total: 122 assertions, plus the cross-process save check. Tests include atomic failure, repeated actions, real mouse placement dispatch, player detouring around a barrier, physical picking, bounded production, outer-ring penalties, upgrades, maintenance expiry, pause, malformed building data and W2 migration.
 
-## Visual evidence and limitations
+A rendered check caught the expanded inspection panel overlapping the bottom HUD. The panel was compacted and the rendered assertion now passes. Another check caught JSON numeric version values failing strict array-membership comparison; version validation now accepts the correctly parsed integral schema number and still rejects unsupported formats.
 
-- captures/w2-services.png is the current rendered W2 service/inventory view with level-five gear. Its test inventory is intentionally sparse, so the selected completed recipe correctly shows Already equipped.
-- Earlier captures/first-light.png, feeding.png and clay-review.png remain historical W1 evidence. They were not regenerated as part of W2.
-- The established shrine/environment geometry, materials, camera and lighting were preserved. New gear and short service effects use the same muted metal/leather palette and existing sculpture helpers.
-- Existing WSL D3D12 blocky shadow artifacts remain visible. The driver also warns that V-Sync switching is unsupported. No renderer or system configuration was changed.
-- Plain Godot may select slow llvmpipe here; use bash run.sh for the existing GPU driver selection. Previous W1 performance measured about 42 FPS after warm-up; W2 performance was not benchmarked.
-- No audio, combat damage, defense, raids, new biomes, travel or expedition drain in this milestone. Armor provides real maximum-Health capacity now; defensive combat tuning belongs to W3. No W3 placeholder actions were added to the service menu.
-- Long-session economy pacing, human playthrough, Windows-native Godot and exported builds remain unverified. Save schema rejects unsupported versions; migration will be needed if the format changes later.
+## Evidence and limitations
+
+- captures/w3-building.png: actual scene with two totems, a reinforced palisade and the inspection panel. The test constructs known states; this is not a full natural progression playthrough.
+- Existing WSL D3D12 blocky shadows and unsupported V-Sync-switch warning remain. No rendering or system settings were changed. Use `bash run.sh` for the established GPU-driver launcher.
+- Building placement deliberately protects the shrine mound and main approach. This makes trapping the player difficult, but means the base cannot be completely sealed; raids will need to respect this open-lane layout.
+- Physics footprints are conservative circles around the authored meshes. Rotation affects appearance; it does not change the occupied footprint. There are no gates, wall-snapping chains or relocated buildings.
+- Durability, repairs and destruction work, but incoming damage is currently test-driven. There are no natural attacks, combat animations, golem defenders, faction AI, scouts, raid scheduling, warning countdowns, occupied-creature reactions, capture channels or reconquest mechanics yet. No raid/golem state is falsely claimed as saved.
+- No additional audio. Long-session balance, maximum-density performance, Windows-native Godot, exports and a human playthrough remain unverified.
+- W2 feeding, crafting, smelting, healing, equipment, levels and saves remain available. Totems slightly offset drain; upkeep and the cap preserve the feeding economy.
 
 ## Documentation and checkpoint
 
-README, the Russian readme status, game design, technical architecture, milestones and the W2/W3 prompt now describe the working W2 and its boundaries. WRITING_STYLE.md remains authoritative. W3 requires another explicit request.
+README (including Russian status), GAME_DESIGN, TECH_ARCHITECTURE and MILESTONES now distinguish the working construction subset from remaining W3 work. WRITING_STYLE.md remains authoritative. The local Git checkpoint records this bounded increment; no remote push is performed. Commit identity uses the already-established explicit agent identity when user Git identity is unavailable.
 
-The directory was not initialized as Git. A local repository was initialized for the user-requested verified W2 checkpoint, including the existing W1 source and assets. No remote is configured or pushed. No user Git identity was configured; the checkpoint uses the explicit agent identity Codex <codex@local.invalid> for this commit only, without changing global configuration.
+## Next W3 increment
 
-## Next action
+Continue W3 with a small complete combat/raid slice: original golem and raider assets; resource-and-Satisfaction-paid summoning; automatic defender targeting; click-to-attack player combat; obstacle-aware enemies attacking barriers; at least six minutes of initial safety and a clear scout/warning before the first raid; gradual bounded escalation; ten-second damage-interruptible capture; temporary occupation with accessible feeding/healing and free recovery. Extend schema v2 through an explicit migration for actor health, raid timers and ownership, then test defeat/recovery and reload behavior before calling W3 complete. Do not begin W4.
 
-Play with `bash run.sh`: gather, feed, craft the stone axe and backpack, then advance shrine levels. F5/F9 exercise persistence. The next recommended development milestone is W3, only on explicit request; first use human play feedback to assess W2 pacing. Preserve the accepted diorama and writing rules.
+To play this checkpoint: `bash run.sh`, gather wood/hide, move beside the shrine, open Build [G], place and maintain a ward totem. F5 saves and F9 loads.
+
+## Critical movement recovery — investigated after the construction checkpoint
+
+The user's actual WSL save reproduced a persistent loss of movement in headless and rendered tests. This was not an engine freeze: frame/physics heartbeats continued, clicks produced valid paths, pause was false, time scale was 1 and interaction lock was 0. The player at (2.5177, 0, 7.5277) touched hare_3 at (2.7203, 0, 8.1978). The hare had reached its home-radius boundary and could not flee further. Every new A* route began with the same rounded source waypoint (2.6, 0, 7.8), which the hare's solid collision blocked. Persisting both positions reproduced the blockage after restarting. This save contained no buildings.
+
+The entire Godot user-data directory was backed up BEFORE testing to /home/danik/.local/share/godot/save_backups/TEMPTERS-20261015T050340375809Z. Original and backup save SHA-256: d136dd5bbb1fba7167bf0cccec25ddf0bfa57df3eac0e0d10bbcf3687f2cd4bd. Tests used disposable copies, never the live slot. No user progression, inventory, Satisfaction, equipment, structures or world data was deleted or rewritten.
+
+Fix: prey use the pickable layer 8 and no longer block the player's layer-2 collision mask. Initial spawn, renewal and saved-state restoration all use the same rule. Trees, rocks, the shrine and constructed barriers remain solid. The exact saved arrangement now permits mouse movement to completion, headlessly and in a D3D12 graphics window.
+
+Successful loading also clears pause/time-scale changes, movement requests, work state, cooldowns, modal interfaces and placement state, restores physics processing and cancels interrupted healing animation. Saves retain a .previous valid snapshot before replacing the slot. Invalid existing files are copied to timestamped .rejected backups before an explicit save can replace them. F8 or the inventory's Load previous save button restores the prior valid snapshot. Corrupt primary saves automatically try that snapshot. Invalid player spawn positions can relocate to the protected southern approach while preserving the rest of the snapshot. Recovery first makes a timestamped .recovery backup, then suspends automatic overwrite until the player explicitly saves with F5. Unsupported/incomplete snapshots are not guessed or destructively reset.
+
+New tests/test_recovery.gd covers the original spatial reproduction, renewal collision, saves during movement/placement/open interfaces/pause/healing/unreachable requests, active totems and barriers, obstacle-adjacent spawning, twelve repeated autosave/load cycles, pre-W3 migration, malformed JSON fallback, incomplete structure fallback, explicit previous-snapshot recovery, and actual mouse-driven displacement after every successful load. tests/diagnose_save.gd can inspect an arbitrary backed-up fixture using --fixture=<path>; it records timing, input, path, collision and movement evidence while operating on its own copy. NPC/combat/capture persistence tests remain pending until those systems exist.
+
+Stability checkpoint validation: all 183 assertions (13 W1 systems, 12 W1 scene/input, 49 W2 economy, 48 construction, 61 recovery) plus cross-process persistence passed. The original-save diagnostic failed with a live hare collision before the fix and passed to the destination afterward in both headless and actual graphics runs. The recovery suite also passed all 61 checks in a graphics window. The original live save checksum remains unchanged. Test saves now use process-specific filenames to avoid concurrent test runs sharing a disposable slot; the verification runner times out stalled tests and fails on Godot script/runtime error output even if Godot reports exit status zero.

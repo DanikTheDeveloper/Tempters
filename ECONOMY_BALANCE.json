@@ -256,7 +256,49 @@
     "first_raid_min_time_seconds": 360,
     "minimum_repeat_raid_interval_seconds": 240,
     "first_raid_opponents": 2,
-    "capture_channel_seconds": 10
+    "capture_channel_seconds": 10,
+    "building": {
+      "max_structures": 24,
+      "max_totems": 5,
+      "build_radius": 9.0,
+      "placement_reach": 5.0,
+      "interaction_reach": 2.5,
+      "snap": 0.65,
+      "totem_fuel_seconds": 300,
+      "totem_decay": 0.6,
+      "totem_output_cap": 0.045,
+      "totem_inner_radius": 6.0,
+      "totem_outer_efficiency": 0.6,
+      "types": {
+        "palisade": {
+          "description": "Blocks movement. 100 durability.",
+          "name": "Palisade",
+          "health": 100,
+          "radius": 0.8
+        },
+        "totem": {
+          "description": "Generates Satisfaction for 300s. Stronger within 6m of the shrine.",
+          "name": "Ward totem",
+          "health": 60,
+          "radius": 0.6
+        }
+      },
+      "repair": {
+        "wood": 2,
+        "stone": 1
+      },
+      "repair_amount": 50,
+      "upgrade": {
+        "wood": 2,
+        "ingot": 1
+      },
+      "upgrade_level": 2,
+      "upgrade_multiplier": 1.5,
+      "refuel": {
+        "wood": 1,
+        "hide": 1
+      }
+    }
   },
   "expedition_bond": {
     "initial_max": 100,

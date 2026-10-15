@@ -5,7 +5,7 @@ static func snapshot(game: Node) -> Dictionary:
 	var world := []
 	for node in game.targets:
 		world.append({"id":node.persistent_id,"position":[node.position.x,0,node.position.z],"depleted":node.depleted,"remaining":maxf(0,node.remaining) if node.depleted else 0.0})
-	return {"version":1,"seed":game.state.balance.world.seed,"owned_shrines":[game.shrine.persistent_id],"character":game.state.serialize(),"position":[game.hero.position.x,0,game.hero.position.z],"world":world}
+	return {"version":2,"seed":game.state.balance.world.seed,"owned_shrines":[game.shrine.persistent_id],"character":game.state.serialize(),"position":[game.hero.position.x,0,game.hero.position.z],"world":world,"buildings":game.buildings.serialize()}
 
 static func valid_position(p: Variant) -> bool:
 	if not p is Array or p.size() != 3: return false
@@ -15,7 +15,7 @@ static func valid_position(p: Variant) -> bool:
 
 static func validate(data: Variant, game: Node) -> String:
 	if not data is Dictionary: return "Invalid save file."
-	if data.get("version") != 1: return "Unsupported save version."
+	if not GameState.whole_number(data.get("version")) or (data.version != 1 and data.version != 2): return "Unsupported save version."
 	if data.get("seed") != game.state.balance.world.seed: return "World seed mismatch."
 	if data.get("owned_shrines") != [game.shrine.persistent_id]: return "Invalid shrine ownership."
 	var error: String = game.state.validate_data(data.get("character"))
@@ -40,6 +40,8 @@ static func validate(data: Variant, game: Node) -> String:
 		var limit: float = game.state.balance.runtime.prey_renew_seconds if match_node.kind == "hare" else game.state.balance.runtime.resource_renew_seconds
 		if not (timer is int or timer is float) or not is_finite(float(timer)) or timer < 0 or timer > limit: return "Invalid resource timer."
 		if (entry.depleted and timer <= 0) or (not entry.depleted and timer != 0) or (match_node.kind == "shrine" and entry.depleted): return "Invalid resource state."
+	if data.version == 2:
+		return game.buildings.validate_data(data.get("buildings"),p)
 	return ""
 
 static func write(path: String, game: Node) -> String:
@@ -53,8 +55,23 @@ static func write(path: String, game: Node) -> String:
 	var status := file.get_error()
 	file.close()
 	if status != OK: return "Could not write save file."
+	if FileAccess.file_exists(path):
+		var previous := JSON.new()
+		var valid := previous.parse(FileAccess.get_file_as_string(path)) == OK
+		if valid: valid = validate(previous.data,game).is_empty()
+		if valid:
+			if DirAccess.copy_absolute(path,path+".previous.tmp") != OK or DirAccess.rename_absolute(path+".previous.tmp",path+".previous") != OK: return "Could not preserve previous save."
+		else:
+			var backup := preserve(path,"rejected")
+			if not backup.error.is_empty(): return backup.error
 	if DirAccess.rename_absolute(path+".tmp",path) != OK: return "Could not replace save file."
 	return ""
+
+static func preserve(path: String, reason: String) -> Dictionary:
+	if not FileAccess.file_exists(path): return {"error":"","path":""}
+	var backup := path+"."+reason+"-"+str(int(Time.get_unix_time_from_system()))+"-"+str(Time.get_ticks_usec())+".json"
+	if DirAccess.copy_absolute(path,backup) != OK: return {"error":"Could not back up the existing save.","path":""}
+	return {"error":"","path":backup}
 
 static func read(path: String, game: Node) -> Dictionary:
 	if not FileAccess.file_exists(path): return {"error":"No saved game."}
@@ -62,4 +79,17 @@ static func read(path: String, game: Node) -> Dictionary:
 	if parser.parse(FileAccess.get_file_as_string(path)) != OK: return {"error":"Malformed save file."}
 	var data: Variant = parser.data
 	var error := validate(data,game)
-	return {"error":error,"data":data}
+	var repaired := false
+	if error in ["Invalid player position.","Player position is obstructed.","Player overlaps a structure.","Structures block resource access."]:
+		# The southern approach is protected from construction. Relocate only the
+		# player; never discard inventory, structures or progression to repair a spawn.
+		var candidate: Dictionary = data.duplicate(true)
+		candidate.position = [0,0,5]
+		if validate(candidate,game).is_empty():
+			data = candidate
+			error = ""
+			repaired = true
+	if error.is_empty() and data.version == 1:
+		data.version = 2
+		data.buildings = {"next_id":1,"structures":[]}
+	return {"error":error,"data":data,"repaired":repaired}

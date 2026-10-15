@@ -120,8 +120,10 @@ For human validation press F5 in `godot --editor --path .` and inspect: scene co
 
 Keep project under `~/projects/Tempters` on WSL native ext4 instead of `/mnt/c` for better file I/O. `godot` and `codex` should be resolved from the same WSL terminal. No background services. Store config with examples; do not rewrite `~/.codex/config.toml` without user approval. Never require .NET.
 
-## Implemented W2 persistence
+## Implemented persistence (W2 and W3 construction)
 
-SaveStore stores schema version 1, deterministic seed, character inventory/equipment/Health/Satisfaction/level/offerings, player XZ position and every stable world ID with position/depletion/remaining renewal timer. Validation completes before live-state mutation. Writes flush and close a temporary sibling file before renaming it over the slot. Unsupported or malformed saves leave gameplay intact and block automatic overwriting until an explicit save succeeds. No engine Nodes are serialized and no offline time is applied.
+SaveStore now writes schema version 2: deterministic seed, character inventory/equipment/Health/Satisfaction/level/offerings, player XZ position, every stable resource ID with position/depletion/remaining renewal timer, and a buildings object. Buildings contain a monotonically increasing ID sequence and each structure's kind, position, rotation, tier, durability and remaining maintenance time. Schema 1 from W2 explicitly migrates to an empty building set after full W2 validation. Other versions are rejected.
+
+Validation completes before live-state mutation, including duplicate structure IDs, overlaps, durability/fuel ranges and resource accessibility. Loading rebuilds physics objects and the navigation grid from validated data. Writes flush and close a temporary sibling file before renaming it over the slot. Unsupported or malformed saves leave gameplay intact and block automatic overwriting until an explicit save succeeds. No engine Nodes are serialized and no offline time is applied. Golem/raid/occupation persistence is not implemented yet.
 
 Graphical runs auto-load and save on transactions, every 30 active seconds and normal window close. Headless smoke runs disable persistence by default; dedicated tests use isolated disposable slots. Save/load buttons and F5/F9 use the same controller path. Save schema and balance schema are separate version numbers. Future schema migration must be explicit; unsupported versions are rejected rather than guessed.

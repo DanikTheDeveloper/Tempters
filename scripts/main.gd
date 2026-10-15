@@ -28,6 +28,7 @@ var autosave_blocked := false
 var ritual: Tween
 var gear_signature := ""
 var gear_visual: Node3D
+var buildings: BuildingSystem
 
 func _ready() -> void:
 	low_spec = "--low-spec" in OS.get_cmdline_user_args()
@@ -49,9 +50,13 @@ func _ready() -> void:
 	hud.service_requested.connect(service)
 	hud.save_requested.connect(save_game)
 	hud.load_requested.connect(load_game)
+	hud.previous_requested.connect(func(): load_game(true))
 	hud.close_requested.connect(cancel)
 	destination = Sculpt.torus(self,Vector3.ZERO,0.27,0.025,Sculpt.mat("dac590",0.6,0,0.2))
 	destination.visible = false
+	buildings = BuildingSystem.new()
+	add_child(buildings)
+	buildings.setup(self)
 	if persistence_enabled and FileAccess.file_exists(save_path): load_game()
 	if "--clay-review" in OS.get_cmdline_user_args():
 		for node in shrine.find_children("*","MeshInstance3D",true,false):
@@ -156,8 +161,11 @@ func pick(mouse := Vector2(-1,-1)) -> Dictionary:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_G: buildings.toggle()
+		if event.keycode == KEY_R and not buildings.placing.is_empty(): buildings.angle = fposmod(buildings.angle+PI/2,TAU)
 		if event.keycode == KEY_F5: save_game()
 		if event.keycode == KEY_F9: load_game()
+		if event.keycode == KEY_F8: load_game(true)
 		if event.keycode == KEY_F2:
 			low_spec = not low_spec
 			get_viewport().scaling_3d_scale = 0.65 if low_spec else 1.0
@@ -165,7 +173,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode in [KEY_I,KEY_B]: hud.inventory_panel.visible = not hud.inventory_panel.visible
 		if event.keycode == KEY_ESCAPE:
 			if feed_lock > 0: return
-			if target != null or not hero.path.is_empty() or hud.menu.visible:
+			if target != null or not hero.path.is_empty() or hud.menu.visible or buildings.panel.visible:
 				cancel()
 			else:
 				paused = not paused
@@ -180,9 +188,16 @@ func _unhandled_input(event: InputEvent) -> void:
 	if paused or feed_lock > 0: return
 	if event.button_index == MOUSE_BUTTON_RIGHT: cancel()
 	if event.button_index != MOUSE_BUTTON_LEFT: return
+	if not buildings.placing.is_empty():
+		buildings.update_preview(event.position)
+		buildings.place(buildings.placing,buildings.preview_position)
+		return
 	var hit := pick(event.position)
 	if hit.is_empty(): return
 	cancel()
+	if hit.get("collider") is BaseStructure:
+		buildings.inspect(hit.collider)
+		return
 	if hit.get("collider") is Interactable:
 		var object: Interactable = hit.collider
 		if object.depleted:
@@ -209,6 +224,7 @@ func reach(object: Interactable) -> float:
 	return object.radius + state.balance.player.interaction_range_world_units * 0.65 + (state.hunting_reach_bonus() if object.kind == "hare" else 0.0)
 
 func cancel() -> void:
+	if is_instance_valid(buildings): buildings.close()
 	target = null
 	hero.path.clear()
 	hero.working = false
@@ -227,6 +243,7 @@ func _process(delta: float) -> void:
 		save_game(false)
 	repath -= delta
 	state.tick(delta)
+	buildings.tick(delta)
 	shrine.satisfaction_ratio = state.satisfaction/state.cap()
 	shrine_light.light_energy = 0.12+shrine.satisfaction_ratio*0.8+shrine.pulse*0.5
 	if state.mood() != last_mood:
@@ -377,13 +394,24 @@ func save_game(manual := true) -> void:
 		if manual: hud.notice.text = "Game saved."
 	else: hud.notice.text = "Save failed: " + error
 
-func load_game() -> void:
+func load_game(use_previous := false) -> void:
 	if not persistence_enabled: return
-	var result := SaveStore.read(save_path,self)
+	var result := SaveStore.read(save_path+".previous" if use_previous else save_path,self)
+	var recovered := use_previous
+	if not result.error.is_empty() and not use_previous and FileAccess.file_exists(save_path+".previous"):
+		result = SaveStore.read(save_path+".previous",self)
+		recovered = result.error.is_empty()
 	if not result.error.is_empty():
 		autosave_blocked = FileAccess.file_exists(save_path)
 		hud.notice.text = "Load failed: " + result.error
 		return
+	recovered = recovered or result.get("repaired",false)
+	if recovered:
+		var backup := SaveStore.preserve(save_path,"recovery")
+		if not backup.error.is_empty():
+			autosave_blocked = true
+			hud.notice.text = backup.error
+			return
 	cancel()
 	if ritual != null and ritual.is_running(): ritual.kill()
 	hero.model.root.scale = Vector3.ONE*1.15
@@ -393,10 +421,22 @@ func load_game() -> void:
 	for entry in result.data.world:
 		for node in targets:
 			if node.persistent_id == entry.id: node.restore_entry(entry)
+	buildings.restore(result.data.buildings)
+	# Navigation requests and modal/animation locks never survive a successful load.
+	paused = false
+	Engine.time_scale = 1.0
+	hero.velocity = Vector3.ZERO
+	hero.working = false
+	hero.set_physics_process(true)
+	for node in targets: node.set_process(true)
+	repath = 0
+	hud.busy = false
+	hud.inventory_panel.hide()
+	hud.refresh()
 	update_equipment()
-	autosave_blocked = false
+	autosave_blocked = recovered
 	autosave_time = 0
-	hud.notice.text = "Game loaded."
+	hud.notice.text = "Save recovered. Press F5 to keep this state." if recovered else "Game loaded."
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_instance_valid(hud): save_game(false)

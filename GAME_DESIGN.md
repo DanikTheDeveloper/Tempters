@@ -138,10 +138,18 @@ Multiplayer networking; internet services; real-money economy; procedural every 
 
 ## W2 implementation notes
 
-W2 is implemented and verified in the current build; STATUS.md records the checks. Only recipes listed in progression.w2_recipes are exposed. Defense, cooking, travel and other future balance entries remain inactive.
+W2 is implemented and verified; STATUS.md records the checks. Shrine recipes listed in progression.w2_recipes remain available. The subsequent W3 construction checkpoint exposes the palisade and totem recipes through the building menu. Golems, cooking and travel remain inactive.
 
 Shrine levels 2/3/4/5 require respectively: 4 wood + 3 stone + 2 hide / 2 ingots + 4 stone + 3 hide / 4 ingots + 6 wood + 4 hide / 6 ingots + 6 stone + 6 hide, plus 20/25/30/40 Satisfaction. Caps are 100/130/160/200/250; appetite multipliers are 1/1.15/1.3/1.5/1.75. Level two unlocks spear and hide armor, three iron pickaxe, four iron axe, five reinforced armor. Costs and effects are authoritative in ECONOMY_BALANCE.json.
 
 Equipment occupies dedicated equipped slots rather than resource stacks. Stone/iron axes reduce chopping time to 0.55/0.35 seconds, pickaxe reduces mineral work to 0.5, spear reduces hunting to 0.45 and adds 0.65 reach. Backpack grants +10 carrying weight and +4 stacks. Armor stages each grant +20 maximum Health without restoring current Health. New characters begin at 75/100 Health so the healing service has an immediate use before W3 damage exists. Healing costs 10 Satisfaction for up to 25 Health and plays a brief magical disappearance/reappearance. World geometry and creature design are preserved.
 
-Saves restore renewable-node timers without offline advancement. A failed validation changes no live state. W3 requires a separate request; it is not part of this implementation.
+Saves restore renewable-node timers without offline advancement. A failed validation changes no live state. W3 has now been requested and is in progress; its construction checkpoint adds schema-v2 structure persistence while migrating W2 saves.
+
+## W3 construction checkpoint — incomplete milestone
+
+Palisades and ward totems can be placed with a ground-snapped preview within 9m of the shrine and 5m of the player. Placement protects the creature's root mound, main approach, renewable resource areas and path access. Building charges the existing recipes only on valid placement. Structures have durability and can be reinforced at shrine level 2, repaired, or dismantled without refunds. Combat damage is testable through the structure API but has no hostile source until the remaining W3 combat work.
+
+Totems run for 300 active seconds per maintenance payment of 1 wood and 1 hide. Their base production is 0.015 Satisfaction/s, with 60% geometric diminishing returns (strongest first), at most five active totems and a combined 0.045/s cap. Beyond 6m from the shrine each totem produces 60% of its inner-ring rate. Reinforcement grants +50% maximum durability and totem output without healing durability. Expired totems stop producing; pause and closed-game time do not consume maintenance or generate Satisfaction. This finite upkeep prevents unattended unlimited income.
+
+Golems, player/enemy combat, faction scouts, escalating raids, ownership capture and free recovery remain unfinished. Keep the planned six-minute raid grace, ten-second interruptible capture and anti-softlock guarantees when implementing them. Do not advance to W4 yet.
