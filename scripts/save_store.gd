@@ -5,7 +5,7 @@ static func snapshot(game: Node) -> Dictionary:
 	var world := []
 	for node in game.targets:
 		world.append({"id":node.persistent_id,"position":[node.position.x,0,node.position.z],"depleted":node.depleted,"remaining":maxf(0,node.remaining) if node.depleted else 0.0})
-	return {"version":2,"seed":game.state.balance.world.seed,"owned_shrines":[game.shrine.persistent_id],"character":game.state.serialize(),"position":[game.hero.position.x,0,game.hero.position.z],"world":world,"buildings":game.buildings.serialize()}
+	return {"version":3,"seed":game.state.balance.world.seed,"owned_shrines":[] if game.combat.phase == "occupied" else [game.shrine.persistent_id],"character":game.state.serialize(),"position":[game.hero.position.x,0,game.hero.position.z],"world":world,"buildings":game.buildings.serialize(),"combat":game.combat.serialize()}
 
 static func valid_position(p: Variant) -> bool:
 	if not p is Array or p.size() != 3: return false
@@ -15,9 +15,10 @@ static func valid_position(p: Variant) -> bool:
 
 static func validate(data: Variant, game: Node) -> String:
 	if not data is Dictionary: return "Invalid save file."
-	if not GameState.whole_number(data.get("version")) or (data.version != 1 and data.version != 2): return "Unsupported save version."
+	if not GameState.whole_number(data.get("version")) or data.version < 1 or data.version > 3: return "Unsupported save version."
 	if data.get("seed") != game.state.balance.world.seed: return "World seed mismatch."
-	if data.get("owned_shrines") != [game.shrine.persistent_id]: return "Invalid shrine ownership."
+	var occupied: bool = data.version == 3 and data.get("combat") is Dictionary and data.combat.get("phase") == "occupied"
+	if data.get("owned_shrines") != ([] if occupied else [game.shrine.persistent_id]): return "Invalid shrine ownership."
 	var error: String = game.state.validate_data(data.get("character"))
 	if not error.is_empty(): return error
 	if not valid_position(data.get("position")): return "Invalid player position."
@@ -40,8 +41,10 @@ static func validate(data: Variant, game: Node) -> String:
 		var limit: float = game.state.balance.runtime.prey_renew_seconds if match_node.kind == "hare" else game.state.balance.runtime.resource_renew_seconds
 		if not (timer is int or timer is float) or not is_finite(float(timer)) or timer < 0 or timer > limit: return "Invalid resource timer."
 		if (entry.depleted and timer <= 0) or (not entry.depleted and timer != 0) or (match_node.kind == "shrine" and entry.depleted): return "Invalid resource state."
-	if data.version == 2:
-		return game.buildings.validate_data(data.get("buildings"),p)
+	if data.version >= 2:
+		error = game.buildings.validate_data(data.get("buildings"),p)
+		if not error.is_empty(): return error
+	if data.version == 3: return game.combat.validate_data(data.get("combat"),data.buildings)
 	return ""
 
 static func write(path: String, game: Node) -> String:
@@ -92,4 +95,7 @@ static func read(path: String, game: Node) -> Dictionary:
 	if error.is_empty() and data.version == 1:
 		data.version = 2
 		data.buildings = {"next_id":1,"structures":[]}
+	if error.is_empty() and data.version == 2:
+		data.version = 3
+		data.combat = game.combat.fresh_data()
 	return {"error":error,"data":data,"repaired":repaired}

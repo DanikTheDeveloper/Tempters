@@ -142,7 +142,7 @@ func run() -> void:
 	game.persistence_enabled = true
 	game.save_game()
 	var saved := SaveStore.read(game.save_path,game)
-	check(saved.error.is_empty() and saved.data.version == 2,"schema two stores structures")
+	check(saved.error.is_empty() and saved.data.version == 3,"current schema stores structures")
 	buildings.damage(fence,500)
 	check(buildings.structures.size() == 2 and not game.navigation.grid.is_point_solid(game.navigation.cell(fence_at)),"destroyed barrier removes collision and path blockage")
 	# Restore the earlier snapshot directly through the same on-disk loader.

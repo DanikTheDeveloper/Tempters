@@ -29,6 +29,7 @@ var ritual: Tween
 var gear_signature := ""
 var gear_visual: Node3D
 var buildings: BuildingSystem
+var combat: CombatDirector
 
 func _ready() -> void:
 	low_spec = "--low-spec" in OS.get_cmdline_user_args()
@@ -57,6 +58,9 @@ func _ready() -> void:
 	buildings = BuildingSystem.new()
 	add_child(buildings)
 	buildings.setup(self)
+	combat = CombatDirector.new()
+	add_child(combat)
+	combat.setup(self)
 	if persistence_enabled and FileAccess.file_exists(save_path): load_game()
 	if "--clay-review" in OS.get_cmdline_user_args():
 		for node in shrine.find_children("*","MeshInstance3D",true,false):
@@ -150,7 +154,7 @@ func pick(mouse := Vector2(-1,-1)) -> Dictionary:
 	if mouse.x < 0: mouse = get_viewport().get_mouse_position()
 	var origin := camera.project_ray_origin(mouse)
 	var direction := camera.project_ray_normal(mouse)
-	var query := PhysicsRayQueryParameters3D.create(origin,origin+direction*150,10)
+	var query := PhysicsRayQueryParameters3D.create(origin,origin+direction*150,26)
 	query.collide_with_areas = true
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
@@ -173,7 +177,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode in [KEY_I,KEY_B]: hud.inventory_panel.visible = not hud.inventory_panel.visible
 		if event.keycode == KEY_ESCAPE:
 			if feed_lock > 0: return
-			if target != null or not hero.path.is_empty() or hud.menu.visible or buildings.panel.visible:
+			if target != null or not hero.path.is_empty() or hud.menu.visible or buildings.panel.visible or is_instance_valid(combat.attack_target) or is_instance_valid(combat.deploying):
 				cancel()
 			else:
 				paused = not paused
@@ -194,7 +198,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var hit := pick(event.position)
 	if hit.is_empty(): return
+	if is_instance_valid(combat.deploying) and not hit.has("collider"):
+		combat.deploy(hit.position)
+		return
 	cancel()
+	if hit.get("collider") is CombatUnit:
+		combat.select(hit.collider)
+		return
 	if hit.get("collider") is BaseStructure:
 		buildings.inspect(hit.collider)
 		return
@@ -224,6 +234,7 @@ func reach(object: Interactable) -> float:
 	return object.radius + state.balance.player.interaction_range_world_units * 0.65 + (state.hunting_reach_bonus() if object.kind == "hare" else 0.0)
 
 func cancel() -> void:
+	if is_instance_valid(combat): combat.clear_orders()
 	if is_instance_valid(buildings): buildings.close()
 	target = null
 	hero.path.clear()
@@ -325,6 +336,9 @@ func offer() -> void:
 	save_game(false)
 
 func service(id: String) -> void:
+	if id == "stone_golem":
+		combat.summon()
+		return
 	if paused or feed_lock > 0: return
 	if hero.position.distance_to(shrine.position) > reach(shrine)+0.3:
 		hud.notice.text = "Approach the shrine to use services."
@@ -422,6 +436,7 @@ func load_game(use_previous := false) -> void:
 		for node in targets:
 			if node.persistent_id == entry.id: node.restore_entry(entry)
 	buildings.restore(result.data.buildings)
+	combat.restore(result.data.combat)
 	# Navigation requests and modal/animation locks never survive a successful load.
 	paused = false
 	Engine.time_scale = 1.0

@@ -9,6 +9,7 @@ var health: float
 var offerings := 0
 var level := 1
 var equipment: Dictionary = {}
+var services_locked := false
 
 func _init() -> void:
 	balance = JSON.parse_string(FileAccess.get_file_as_string("res://ECONOMY_BALANCE.json"))
@@ -99,9 +100,13 @@ func hunting_reach_bonus() -> float:
 	return balance.equipment.spear.reach_bonus if equipment.has("spear") else 0.0
 
 func service_ids() -> Array:
-	return balance.progression.w2_recipes + ["heal","level_up"]
+	return balance.progression.w2_recipes + ["stone_golem","heal","level_up"]
 
 func specification(id: String) -> Dictionary:
+	if id == "stone_golem":
+		var spec: Dictionary = balance.recipes.stone_golem.duplicate(true)
+		spec.merge({"name":"Stone golem","required_level":balance.defense.combat.golem_level,"output":{},"description":"Summon a defender. Click it to set a guard position. Maximum %d." % balance.defense.combat.max_golems},true)
+		return spec
 	if id == "heal":
 		return {"name":"Restore Health","inputs":{},"output":{},"satisfaction":balance.services.heal_cost_satisfaction,"required_level":1,"description":"Restore up to %d Health." % balance.services.heal_amount}
 	if id == "level_up":
@@ -117,6 +122,9 @@ func quote(id: String) -> Dictionary:
 	var spec := specification(id)
 	if spec.is_empty(): return {"ok":false,"message":"Unknown service."}
 	var result := {"ok":false,"message":"","spec":spec}
+	if services_locked and id != "heal":
+		result.message = "Shrine occupied. Reclaim it to restore crafting."
+		return result
 	if id == "level_up" and level >= 5:
 		result.message = "Maximum level reached."
 	elif id == "heal" and health >= max_health():

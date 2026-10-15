@@ -146,6 +146,9 @@ func placement_error(kind: String, at: Vector3, check_routes := true) -> String:
 		if at.distance_to(node.home) < clearance+radius: return "Resource area must remain clear."
 	for node in structures:
 		if at.distance_to(node.position) < node.radius+radius+0.15: return "Structures overlap."
+	if is_instance_valid(game.combat):
+		for unit in game.combat.units:
+			if at.distance_to(unit.position) < radius+0.65: return "Unit occupies this location."
 	if check_routes:
 		var entries: Array = serialize().structures
 		entries.append({"kind":kind,"position":[at.x,0,at.z]})
@@ -219,7 +222,7 @@ func damage(node: BaseStructure, amount: float) -> void:
 	node.health = maxf(0,node.health-amount)
 	if node.health <= 0: destroy(node)
 	else: node.update_damage()
-	game.save_game(false)
+	# Damage is included in the periodic save; destruction saves immediately below.
 
 func destroy(node: BaseStructure) -> void:
 	if not structures.has(node): return
@@ -232,6 +235,7 @@ func destroy(node: BaseStructure) -> void:
 	game.save_game(false)
 
 func production() -> float:
+	if game.state.services_locked: return 0.0
 	var strengths: Array[float] = []
 	for node in structures:
 		if node.kind != "totem" or node.fuel <= 0: continue

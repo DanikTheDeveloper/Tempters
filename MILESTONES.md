@@ -32,7 +32,7 @@ Menu costs and recipe preview; ore smelting to ingot; axe/spear, improved bag, h
 
 Place wood fences, totem farm with diminishing returns, golem defenders; raid cues; rival NPC scouts, pathing, combat and channeling capture; temporary loss/reclaim loop. Concise threat warnings. Fair threat ramp and no hardlocks.
 
-**In progress — construction checkpoint only.** Mouse-placed palisades and totems, resource costs, previews, obstacle/access checks, reinforcement, repairs, durability/destruction APIs, maintenance-limited totem production and schema-v2 persistence are implemented. Golems, combat, factions, raids, capture/recovery and their persistence remain unfinished. Continue W3 next; do not begin W4 or claim W3 completion from this checkpoint.
+**Implemented and verified.** Construction, maintained totems, paid golem defenders, equipped player combat, rival scouts and escalating raids, interruptible capture, temporary occupation and free reclaim are playable. Schema-v3 saves preserve actors, structures, raid timers and ownership; W1/W2 saves migrate with full preparation time. The persistent movement bug is reproduced and fixed. See STATUS.md for test evidence and remaining balance/platform limitations. W4 has not begun and is not authorized in this session.
 
 ## W4 — Frontier generator and distance
 
@@ -62,4 +62,4 @@ The priority is **the game you can play and enjoy**, not maximizing consumed quo
 
 ## Current W2 completion
 
-W2 remains implemented and verified: atomic crafting/smelting/healing, seven equipment upgrades, five shrine levels, recipe previews, capacity enforcement and service effects. W2 schema-v1 saves migrate into the current schema-v2 construction build. W3 was explicitly requested and is in progress; complete its remaining combat/raid/recovery systems next. See STATUS.md for actual tests and caveats.
+W2 remains implemented and verified: atomic crafting/smelting/healing, seven equipment upgrades, five shrine levels, recipe previews, capacity enforcement and service effects. W2 schema-v1 saves migrate into the current schema-v3 defense build. W3 is implemented; continue stability and balance review before any separately authorized W4 work. See STATUS.md for actual tests and caveats.

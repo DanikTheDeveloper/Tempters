@@ -96,3 +96,7 @@ Target high contrast at object boundaries; magenta is local, never the entire sc
 5. **Actual running scene beats concept-only art**.
 
 The agent must capture screenshots or use actual GUI observations if tooling permits. If unavailable, clearly mark the visual gate `UNVERIFIED — USER MUST INSPECT` and tell user where to focus. Headless Godot success does not prove art quality.
+
+## W3 delivered assets
+
+CombatArt adds moss-covered articulated stone golems, rust-cloth masked raiders with brass accents and polearms, and a cloth occupation banner. These use the existing sculpted mesh/material workflow and scene lighting. Walking, strikes and hit reactions communicate behavior; labels show only combat state. Approved environment and central creature geometry are preserved. Actual rendered evidence: captures/w3-combat.png.

@@ -15,11 +15,20 @@ func run() -> void:
 		game.hero.position = Vector3(3.25,0,0)
 		game.state.inventory.wood = 4
 		valid = game.buildings.place("palisade",Vector3(4.55,0,-3.25))
+		game.combat.add_unit("golem",Vector3(-3.9,0,1.3)).health = 97
+		game.combat.add_unit("raider",Vector3(0,0,-7.8)).health = 20
+		game.combat.capture()
 		game.save_game()
 		valid = valid and FileAccess.file_exists(game.save_path)
 	else:
 		valid = game.state.inventory.ingot == 1 and game.state.inventory.ore == 0 and game.state.inventory.raw_meat == 1 and game.targets[-1].depleted and game.targets[-1].remaining > 30
 		valid = valid and game.buildings.structures.size() == 1 and game.buildings.structures[0].health == 100 and game.state.inventory.wood == 0
+		valid = valid and game.combat.phase == "occupied" and game.state.services_locked and game.combat.defenders().size() == 1 and game.combat.hostiles().size() == 1
+		valid = valid and game.combat.defenders()[0].health == 97 and game.combat.hostiles()[0].health == 20
+		var start: Vector3 = game.hero.position
+		game.hero.path = game.navigation.route(start,Vector3(0,0,5))
+		for i in 60: await physics_frame
+		valid = valid and game.hero.position.distance_to(start) > 1
 		DirAccess.remove_absolute(game.save_path)
 	game.persistence_enabled = false
 	game.queue_free()

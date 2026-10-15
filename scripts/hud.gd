@@ -179,7 +179,7 @@ func refresh() -> void:
 	costs.append("%d Satisfaction" % spec.satisfaction)
 	details.text = "%s\n\nCost: %s\nRequires shrine level %d" % [spec.description,", ".join(costs),spec.required_level]
 	service_status.text = "Service in progress." if busy else quote.message
-	service_button.text = "Restore Health" if id == "heal" else "Upgrade shrine" if id == "level_up" else "Smelt" if id == "ingot_from_ore" else "Craft & equip"
+	service_button.text = "Restore Health" if id == "heal" else "Upgrade shrine" if id == "level_up" else "Summon" if id == "stone_golem" else "Smelt" if id == "ingot_from_ore" else "Craft & equip"
 	service_button.disabled = busy or not quote.ok
 
 

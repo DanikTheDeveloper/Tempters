@@ -57,3 +57,7 @@ Ambient animation should be eerie and expressive, like irritated breathing — n
 ## Interaction feedback and grounding
 
 The player brings meat home and throws it into the shrine. Feeding is confirmed by its physical reaction, the inventory change and a brief Satisfaction gain. Invalid food receives a concise requirement message only when needed; stone may still be accepted by a separate recipe if specified. Large Satisfaction expenses cause a visible slump. Every reaction must correspond to a clear state change. Follow WRITING_STYLE.md: personality comes primarily from behavior and animation, without routine dialogue or commentary.
+
+## W3 implemented defensive behavior
+
+The living shrine reacts to summoning and occupation through its existing pulse animation; an adjacent rival banner marks occupation. Ten uninterrupted seconds of enemy channeling capture it. Feeding and healing remain possible while occupied; crafting and passive totem output resume after a free ten-second reclaim once raiders are defeated or withdrawn. No dialogue barks are added. Original creature geometry and materials are preserved.
