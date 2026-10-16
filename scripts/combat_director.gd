@@ -137,6 +137,7 @@ func hit_unit(unit: CombatUnit, amount: float) -> void:
 	if not units.has(unit): return
 	unit.health = maxf(0,unit.health-amount)
 	unit.hit = 0.25
+	if not unit.territory_id.is_empty() and game.creatures.records.has(unit.territory_id): game.creatures.records[unit.territory_id].enemy_capture = 0.0
 	if unit.kind == "raider" and unit.position.distance_to(game.shrine.position) < 3.6: capture_progress = 0
 	game.popup("−%d" % amount,unit.position+Vector3.UP*2)
 	if unit.health <= 0: remove_unit(unit)
@@ -255,6 +256,9 @@ func _physics_process(delta: float) -> void:
 	var channeling := false
 	for unit in units.duplicate():
 		if not units.has(unit): continue
+		if unit.kind=="golem" and not unit.base_id.is_empty() and unit.position.distance_to(game.hero.position)>96:
+			unit.path.clear()
+			continue
 		unit.step(delta)
 		if unit.scout: continue
 		var victim: Node3D = null

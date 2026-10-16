@@ -48,5 +48,6 @@ func _draw() -> void:
 		var point := origin+(Vector2(record.position[0],record.position[2])-center)*scale_factor
 		if Rect2(Vector2(8,24),size-Vector2(16,32)).has_point(point):
 			draw_circle(point,5,Color("e5c27d") if record.owner=="player" else Color("c56f61") if record.owner in ["npc","contested"] else Color("cabed2"))
+	if expanded: draw_string(ThemeDB.fallback_font,Vector2(8,size.y-10),"Gold: owned · Red: hostile · Pale: neutral",HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("e7d9bf"))
 	draw_circle(origin,3,Color("e7d9bf"))
 	draw_string(ThemeDB.fallback_font,Vector2(8,17),game.frontier.layout.biome(game.hero.position).capitalize()+" · Map [M]",HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("e7d9bf"))

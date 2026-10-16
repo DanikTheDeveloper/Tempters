@@ -444,7 +444,6 @@
     "autosave_seconds": 30
   },
   "territory": {
-    "sector_chunks": 8,
     "discovery_radius": 18,
     "capture_seconds": 15,
     "capture_inputs": {

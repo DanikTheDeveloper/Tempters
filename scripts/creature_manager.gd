@@ -32,7 +32,7 @@ func setup(owner_game: Node) -> void:
 	details.custom_minimum_size = Vector2(364,0)
 	details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(364,300)
+	scroll.custom_minimum_size = Vector2(364,280)
 	box.add_child(scroll)
 	actions = VBoxContainer.new()
 	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -100,7 +100,7 @@ func spawn_site(cell: Vector2i) -> void:
 	if site.is_empty() or nodes.has(site.id): return
 	if not records.has(site.id):
 		var record: Dictionary = site.duplicate(true)
-		record.merge({"owner":"neutral","satisfaction":0.0,"level":1,"discovered":false,"activated":false,"capture":0.0,"guards":[],"ever_owned":false,"threat":"stable","threat_timer":config.raid_interval})
+		record.merge({"owner":"neutral","satisfaction":0.0,"level":1,"discovered":false,"activated":false,"capture":0.0,"guards":[],"enemy_capture":0.0,"ever_owned":false,"threat":"stable","threat_timer":config.raid_interval})
 		if site.biome == "desert":
 			record.owner = "npc"
 			for i in 2:
@@ -120,6 +120,10 @@ func spawn_site(cell: Vector2i) -> void:
 	node.title = config.types[site.biome].name
 	node.add_to_group("camera_occluder_body")
 	game.occlusion.register(visual)
+	var banner := CombatArt.banner(node)
+	banner.position = Vector3(-2.7,0,1.8)
+	banner.visible = records[site.id].owner in ["npc","contested"]
+	node.set_meta("territory_banner",banner)
 	nodes[site.id] = node
 	for guard in records[site.id].guards:
 		var unit: CombatUnit = game.combat.restore_unit(guard)
@@ -168,7 +172,7 @@ func capture_error(id: String) -> String:
 		if unit.position.distance_to(point(record))<12: return "Clear nearby enemies."
 	if record.get("ever_owned",false): return ""
 	for item in config.capture_inputs:
-		if game.state.inventory[item]<config.capture_inputs[item]: return "Requires 6 raw meat and 2 ingots."
+		if game.state.inventory[item]<config.capture_inputs[item]: return "Requires "+game.buildings.cost_text(config.capture_inputs)+"."
 	return ""
 
 func begin_capture(id: String) -> bool:
@@ -190,6 +194,7 @@ func tick(delta: float) -> void:
 			record.satisfaction = maxf(0,record.satisfaction-delta*drain)
 		if nodes.has(id):
 			nodes[id].satisfaction_ratio = record.satisfaction/cap(record)
+			nodes[id].get_meta("territory_banner").visible = record.owner in ["npc","contested"]
 			if not record.discovered and game.hero.position.distance_to(point(record))<config.discovery_radius:
 				record.discovered = true
 				game.hud.notice.text = config.types[record.biome].name+" discovered."
@@ -212,7 +217,7 @@ func tick(delta: float) -> void:
 				game.save_game(false)
 	if not travel_pending.is_empty(): advance_travel(delta)
 	refresh_clock += delta
-	if panel.visible and refresh_clock>0.5:
+	if panel.visible and refresh_clock>0.5 and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		refresh_clock = 0
 		refresh()
 
@@ -293,9 +298,17 @@ func refresh() -> void:
 		details.text += "\n%d structures · %d defenders" % [structures,defenders]
 	if record.has("threat"):
 		details.text += "\nTerritory: %s · %ds" % [record.threat,ceili(record.threat_timer)]
+		if record.owner=="contested": details.text += " · Capture %.1fs" % record.enemy_capture
+	if record.owner=="player":
+		for destination in all_records():
+			if destination.id==record.id or not destination.discovered or destination.owner!="player" or not destination.activated: continue
+			var label := "%s · %s · %.0f Satisfaction\nTravel: %d here + %d there" % [config.types[destination.biome].name,destination.biome,destination.satisfaction,config.travel_source_cost,config.travel_destination_cost]
+			var button: Button = game.hud.button(actions,label,func(): begin_travel(record.id,destination.id))
+			button.disabled = not travel_error(record.id,destination.id).is_empty() or not travel_pending.is_empty()
+			button.tooltip_text = travel_error(record.id,destination.id)
 	if record.owner!="player":
-		details.text += ("\nReclaim · %.1f / %ds" if record.ever_owned else "\nClaim: 6 raw meat, 2 ingots · %.1f / %ds") % [record.capture,config.capture_seconds]
-		game.hud.button(actions,"Claim shrine",func(): begin_capture(selected))
+		details.text += "\n%s · %.1f / %ds" % ["Reclaim" if record.ever_owned else "Claim: "+game.buildings.cost_text(config.capture_inputs),record.capture,config.capture_seconds]
+		game.hud.button(actions,"Reclaim shrine" if record.ever_owned else "Claim shrine",func(): begin_capture(selected))
 	elif record.id!=game.shrine.persistent_id:
 		game.hud.button(actions,"Feed · 1 raw meat",func(): feed(selected))
 		var view := service_view(record)
@@ -306,13 +319,6 @@ func refresh() -> void:
 			var button: Button = game.hud.button(actions,"%s\n%s%.0f Satisfaction" % [quote.spec.name,cost,quote.spec.satisfaction],func(): service(selected,recipe))
 			button.disabled = not quote.ok or not near_record(record)
 			button.tooltip_text = quote.message
-	if record.owner=="player":
-		for destination in all_records():
-			if destination.id==record.id or not destination.discovered or destination.owner!="player" or not destination.activated: continue
-			var label := "%s · %s · %.0f Satisfaction\nTravel: %d here + %d there" % [config.types[destination.biome].name,destination.biome,destination.satisfaction,config.travel_source_cost,config.travel_destination_cost]
-			var button: Button = game.hud.button(actions,label,func(): begin_travel(record.id,destination.id))
-			button.disabled = not travel_error(record.id,destination.id).is_empty() or not travel_pending.is_empty()
-			button.tooltip_text = travel_error(record.id,destination.id)
 	game.hud.button(actions,"All territories",func(): selected=""; refresh())
 
 func serialize() -> Dictionary:
@@ -322,6 +328,7 @@ func serialize() -> Dictionary:
 func validate(data: Variant) -> String:
 	if not data is Dictionary or not data.get("records") is Dictionary or data.records.size()>300: return "Invalid creature registry."
 	for id in data.records:
+		if not id is String: return "Invalid creature ID."
 		var record: Variant = data.records[id]
 		if not record is Dictionary or not SaveStore.valid_position(record.get("position")): return "Invalid creature position."
 		var site: Dictionary = game.frontier.layout.creature_site(WorldLayout.chunk(point(record)))
@@ -338,11 +345,13 @@ func validate(data: Variant) -> String:
 		var guard_error: String = game.combat.validate_data(guard_data,{"structures":[]})
 		if not guard_error.is_empty(): return guard_error
 		for guard in record.guards:
-			if guard.kind!="raider" or guard.scout or Vector3(guard.position[0],0,guard.position[2]).distance_to(point(record))>18: return "Invalid territorial guard."
+			if guard.kind!="raider" or guard.scout or Vector3(guard.position[0],0,guard.position[2]).distance_to(point(record))>18 or Vector3(guard.position[0],0,guard.position[2]).distance_to(point(record))<2.23 or Vector3(guard.home[0],0,guard.home[2]).distance_to(point(record))>8: return "Invalid territorial guard."
 		if record.owner=="player" and not record.guards.is_empty(): return "Owned shrine has hostile guards."
+		var channel: Variant = record.get("enemy_capture",0.0)
+		if not (channel is int or channel is float) or not is_finite(float(channel)) or channel<0 or channel>game.state.balance.defense.capture_channel_seconds: return "Invalid territory capture."
 		if not record.get("ever_owned") is bool or record.get("threat") not in ["stable","warning","contested","occupied"]: return "Invalid territory condition."
 		if not (record.get("threat_timer") is int or record.get("threat_timer") is float) or not is_finite(float(record.threat_timer)) or record.threat_timer<0 or record.threat_timer>config.raid_interval: return "Invalid territory timer."
-		if record.owner=="contested" and record.threat!="contested": return "Invalid territory contest."
+		if record.owner=="contested" and (record.threat!="contested" or not record.ever_owned): return "Invalid territory contest."
 		if record.owner=="player" and not record.ever_owned: return "Invalid territory history."
 	return ""
 
@@ -353,6 +362,7 @@ func restore(data: Dictionary) -> void:
 	travel_source = ""
 	for id in nodes.keys(): unload_site(WorldLayout.chunk(nodes[id].position))
 	records = data.records.duplicate(true)
+	for record in records.values(): record.enemy_capture = record.get("enemy_capture",0.0)
 func travel_error(source_id: String, destination_id: String) -> String:
 	var source := get_record(source_id)
 	var destination := get_record(destination_id)
@@ -473,8 +483,10 @@ func advance_territories(delta: float) -> void:
 			if record.threat_timer<=0:
 				record.owner = "contested"
 				record.threat = "contested"
+				record.enemy_capture = 0.0
 				record.threat_timer = config.contest_seconds
 				make_guards(record)
+				if nodes.has(id): nodes[id].pulse = 1
 				game.hud.notice.text = config.types[record.biome].name+": under attack."
 				changed = true
 			continue
@@ -482,6 +494,15 @@ func advance_territories(delta: float) -> void:
 		if nodes.has(id):
 			snapshot_guards(id)
 			victory = record.guards.is_empty()
+			var channeling := false
+			for unit in game.combat.units:
+				if unit.territory_id==id and unit.hit<=0 and unit.position.distance_to(point(record))<=3.6: channeling = true
+			record.enemy_capture = minf(game.state.balance.defense.capture_channel_seconds,record.enemy_capture+delta) if channeling else 0.0
+			if record.enemy_capture>=game.state.balance.defense.capture_channel_seconds:
+				record.threat_timer = 0
+			elif record.threat_timer<=0:
+				# Raiders which never reach the shrine withdraw; walls genuinely defend it.
+				victory = true
 		elif record.threat_timer<=0:
 			# Bounded strategic resolution; no actors or paths are spawned offscreen.
 			var strength := 0.0
@@ -496,11 +517,15 @@ func advance_territories(delta: float) -> void:
 				for structure in game.buildings.structures:
 					if structure.base_id==id: structure.health = maxf(1,structure.health-20); structure.update_damage()
 		if victory:
+			for unit in game.combat.units.duplicate():
+				if unit.territory_id==id: game.combat.remove_unit(unit)
+			record.enemy_capture = 0.0
 			record.merge({"owner":"player","threat":"stable","threat_timer":config.raid_interval,"guards":[]},true)
 			game.hud.notice.text = config.types[record.biome].name+": defended."
 			changed = true
 		elif record.threat_timer<=0:
 			record.owner = "npc"
+			record.enemy_capture = 0.0
 			record.activated = false
 			record.threat = "occupied"
 			game.hud.notice.text = config.types[record.biome].name+": occupied. Defeat the guards to reclaim it."

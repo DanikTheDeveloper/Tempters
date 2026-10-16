@@ -265,6 +265,7 @@ func reach(object: Interactable) -> float:
 	return object.radius + state.balance.player.interaction_range_world_units * 0.65 + (state.hunting_reach_bonus() if object.kind == "hare" else 0.0)
 
 func cancel() -> void:
+	if is_instance_valid(hud): hud.hint.text = "Click to move or interact."
 	if is_instance_valid(creatures): creatures.close()
 	if is_instance_valid(combat): combat.clear_orders()
 	if is_instance_valid(buildings): buildings.close()
