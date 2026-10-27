@@ -59,6 +59,16 @@ func prepare() -> void:
 		if node.kind == "stone":
 			FrontierArt.pebble_mesh = node.art.get_child(0).mesh
 			break
+	# Prepare immutable actor/creature visuals between startup frames, never in a
+	# terrain-completion job during an expedition. Instances share mesh resources.
+	for kind in ["raider","golem"]:
+		var model: Dictionary = CombatArt.unit(self,kind)
+		model.root.hide()
+		model.root.queue_free()
+		await get_tree().process_frame
+	for biome in ["desert","snow"]:
+		if not game.creatures.templates.has(biome): game.creatures.build_template(biome)
+		await get_tree().process_frame
 	initialized = true
 	update_chunks()
 

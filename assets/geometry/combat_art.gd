@@ -1,7 +1,14 @@
 class_name CombatArt
 extends RefCounted
 
+static var unit_templates: Dictionary = {}
+static var banner_template: PackedScene
+
 static func unit(parent: Node3D, kind: String) -> Dictionary:
+	if unit_templates.has(kind):
+		var instance: Node3D = unit_templates[kind].instantiate()
+		parent.add_child(instance)
+		return {"root":instance,"legs":[instance.get_node("Leg0"),instance.get_node("Leg1")],"arms":[instance.get_node("Arm0"),instance.get_node("Arm1")]}
 	var root := Node3D.new()
 	parent.add_child(root)
 	var stone := Sculpt.mat("718276")
@@ -24,6 +31,7 @@ static func unit(parent: Node3D, kind: String) -> Dictionary:
 		Sculpt.limb(root,Vector3(-0.3,1.12,0.2),Vector3(0.28,0.6,0.23),0.045,brass)
 	for side in [-1.0,1.0]:
 		var leg := Node3D.new()
+		leg.name = "Leg%d" % limbs.size()
 		root.add_child(leg)
 		leg.position = Vector3(side*(0.27 if kind == "golem" else 0.16),0.55,0)
 		Sculpt.rock(leg,Vector3(0,-0.22,0),Vector3(0.19,0.32,0.2) if kind == "golem" else Vector3(0.09,0.3,0.12),stone if kind == "golem" else dark,int(side)+5)
@@ -31,6 +39,7 @@ static func unit(parent: Node3D, kind: String) -> Dictionary:
 		Sculpt.bake(leg)
 		limbs.append(leg)
 		var arm := Node3D.new()
+		arm.name = "Arm%d" % arms.size()
 		root.add_child(arm)
 		arm.position = Vector3(side*(0.61 if kind == "golem" else 0.32),1.4 if kind == "golem" else 1.2,0)
 		Sculpt.rock(arm,Vector3(0,-0.27,0),Vector3(0.22,0.4,0.24) if kind == "golem" else Vector3(0.1,0.29,0.12),stone if kind == "golem" else cloth,16)
@@ -41,9 +50,14 @@ static func unit(parent: Node3D, kind: String) -> Dictionary:
 		Sculpt.bake(arm)
 		arms.append(arm)
 	Sculpt.bake(root,false)
+	unit_templates[kind] = pack_visual(root)
 	return {"root":root,"legs":limbs,"arms":arms}
 
 static func banner(parent: Node3D) -> Node3D:
+	if banner_template != null:
+		var instance: Node3D = banner_template.instantiate()
+		parent.add_child(instance)
+		return instance
 	var root := Node3D.new()
 	parent.add_child(root)
 	Sculpt.limb(root,Vector3.ZERO,Vector3(0,2.2,0),0.045,Sculpt.mat("66503b"))
@@ -51,4 +65,19 @@ static func banner(parent: Node3D) -> Node3D:
 	Sculpt.loft(root,[Vector3(0,1.1,0),Vector3(0.07,1.5,0),Vector3(0,2,0)],[0.17,0.36,0.37],[0.025,0.025,0.025],Sculpt.mat("9b4e40"),4)
 	Sculpt.rock(root,Vector3(0,1.72,0.04),Vector3(0.09,0.16,0.03),Sculpt.mat("b59658"))
 	Sculpt.bake(root)
+	banner_template = pack_visual(root)
 	return root
+
+static func pack_visual(root: Node3D) -> PackedScene:
+	assign_owner(root,root)
+	var scene := PackedScene.new()
+	scene.pack(root)
+	return scene
+
+static func assign_owner(node: Node, root: Node) -> void:
+	for child in node.get_children():
+		# Sculpt.bake leaves source pieces queued for deletion until frame end.
+		# They must never enter a cached packed visual alongside the merged mesh.
+		if child.is_queued_for_deletion(): continue
+		child.owner = root
+		assign_owner(child,root)
